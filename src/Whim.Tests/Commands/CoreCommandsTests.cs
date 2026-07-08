@@ -360,6 +360,25 @@ public class CoreCommandsTests
 	}
 
 	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void CreateWorkspaceOnCurrentMonitor(IContext ctx, MutableRootSector root, List<object> transforms)
+	{
+		// Given there is an active workspace and monitor
+		Workspace workspace = CreateWorkspace();
+		AddActiveWorkspaceToStore(root, workspace);
+
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		ICommand command = testUtils.GetCommand("whim.core.create_workspace_on_current_monitor");
+
+		// When
+		command.TryExecute();
+
+		// Then a workspace is created on the current monitor
+		Assert.Contains(transforms, t => t.Equals(new CreateWorkspaceOnMonitorTransform()));
+	}
+
+	[Theory, AutoSubstituteData<StoreCustomization>]
 	internal void PinWorkspaceToCurrentMonitor(IContext ctx, MutableRootSector root, List<object> transforms)
 	{
 		// Given there is an active workspace on the second monitor
