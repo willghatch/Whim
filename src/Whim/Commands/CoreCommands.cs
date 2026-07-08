@@ -294,6 +294,19 @@ internal class CoreCommands : PluginCommands
 					_context.Store.Pick(PickActiveLayoutEngine()).GetLayoutEngine<FocusLayoutEngine>() is not null
 			)
 			.Add(
+				identifier: "pin_workspace_to_current_monitor",
+				title: "Pin the current workspace to the current monitor",
+				callback: PinWorkspaceToCurrentMonitor
+			)
+			.Add(
+				identifier: "unpin_workspace",
+				title: "Unpin the current workspace, allowing it on any monitor",
+				callback: () =>
+					_context.Store.Dispatch(
+						new SetStickyMonitorIndicesTransform(_context.Store.Pick(PickActiveWorkspaceId()), [])
+					)
+			)
+			.Add(
 				identifier: "close_current_workspace",
 				title: "Close the current workspace",
 				callback: () =>
@@ -406,6 +419,30 @@ internal class CoreCommands : PluginCommands
 			// Move the window to the next/previous workspace
 			_context.Store.Dispatch(new MoveWindowToWorkspaceTransform(workspaces[nextIndex].Id, window.Handle));
 		};
+
+	internal void PinWorkspaceToCurrentMonitor()
+	{
+		IMonitor currentMonitor = _context.Store.Pick(PickActiveMonitor());
+		IReadOnlyList<IMonitor> monitors = _context.Store.Pick(PickAllMonitors());
+
+		int monitorIndex = -1;
+		for (int idx = 0; idx < monitors.Count; idx++)
+		{
+			if (monitors[idx].Handle == currentMonitor.Handle)
+			{
+				monitorIndex = idx;
+				break;
+			}
+		}
+
+		if (monitorIndex == -1)
+		{
+			return;
+		}
+
+		WorkspaceId workspaceId = _context.Store.Pick(PickActiveWorkspaceId());
+		_context.Store.Dispatch(new SetStickyMonitorIndicesTransform(workspaceId, [monitorIndex]));
+	}
 
 	// This record is necessary, otherwise the index captured is the last one (11)
 	// The index here is 1-based.

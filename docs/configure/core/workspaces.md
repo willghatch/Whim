@@ -38,3 +38,5 @@ workspaces:
 ```
 
 Here, the workspace can only be displayed on the first and second monitors (0-based index). For more on the ordering of monitors monitors, see the [Monitors](monitors.md) page.
+
+Workspaces can also be pinned to monitors dynamically at runtime. The `whim.core.pin_workspace_to_current_monitor` command pins the current workspace to the monitor it is currently on, and `whim.core.unpin_workspace` removes any monitor restrictions from the current workspace. See [Commands](commands.md#core-commands).
