@@ -54,6 +54,42 @@ public class CoreCommandsTests
 		ctx.Store.Received(1).Dispatch(new FocusWindowInDirectionTransform(Direction: direction));
 	}
 
+	[InlineAutoSubstituteData("whim.core.focus_window_next", false)]
+	[InlineAutoSubstituteData("whim.core.focus_window_previous", true)]
+	[Theory]
+	public void FocusWindowInOrder(string commandName, bool reverse, IContext ctx)
+	{
+		// Given
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		ICommand command = testUtils.GetCommand(commandName);
+
+		// When
+		command.TryExecute();
+
+		// Then
+		ctx.Store.Received(1).Dispatch(new FocusWindowInOrderTransform(Reverse: reverse));
+	}
+
+	[InlineAutoSubstituteData("whim.core.swap_window_next", false)]
+	[InlineAutoSubstituteData("whim.core.swap_window_previous", true)]
+	[Theory]
+	public void SwapWindowInOrder(string commandName, bool reverse, IContext ctx)
+	{
+		// Given
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		ICommand command = testUtils.GetCommand(commandName);
+
+		// When
+		command.TryExecute();
+
+		// Then
+		ctx.Store.Received(1).Dispatch(new SwapWindowInOrderTransform(Reverse: reverse));
+	}
+
 	[InlineAutoSubstituteData("whim.core.swap_window_in_direction.left", Direction.Left)]
 	[InlineAutoSubstituteData("whim.core.swap_window_in_direction.right", Direction.Right)]
 	[InlineAutoSubstituteData("whim.core.swap_window_in_direction.up", Direction.Up)]
