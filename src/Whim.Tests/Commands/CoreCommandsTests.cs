@@ -329,6 +329,58 @@ public class CoreCommandsTests
 		Assert.Contains(transforms, t => t.Equals(new RemoveWorkspaceByIdTransform(workspace.Id)));
 	}
 
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void PinWorkspaceToCurrentMonitor(IContext ctx, MutableRootSector root, List<object> transforms)
+	{
+		// Given there is an active workspace on the second monitor
+		Workspace workspace = CreateWorkspace();
+		IMonitor monitor1 = CreateMonitor((HMONITOR)1);
+		IMonitor monitor2 = CreateMonitor((HMONITOR)2);
+		AddMonitorsToSector(root, monitor1, monitor2);
+		PopulateMonitorWorkspaceMap(root, monitor2, workspace);
+		root.MonitorSector.ActiveMonitorHandle = monitor2.Handle;
+
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		ICommand command = testUtils.GetCommand("whim.core.pin_workspace_to_current_monitor");
+
+		// When
+		command.TryExecute();
+
+		// Then the active workspace is pinned to the active monitor's index
+		Assert.Contains(
+			transforms,
+			t =>
+				t is SetStickyMonitorIndicesTransform st
+				&& st.WorkspaceId == workspace.Id
+				&& st.MonitorIndices.Count == 1
+				&& st.MonitorIndices[0] == 1
+		);
+	}
+
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void UnpinWorkspace(IContext ctx, MutableRootSector root, List<object> transforms)
+	{
+		// Given there is an active workspace
+		Workspace workspace = CreateWorkspace();
+		AddActiveWorkspaceToStore(root, workspace);
+
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		ICommand command = testUtils.GetCommand("whim.core.unpin_workspace");
+
+		// When
+		command.TryExecute();
+
+		// Then the active workspace is unpinned (empty indices)
+		Assert.Contains(
+			transforms,
+			t => t is SetStickyMonitorIndicesTransform st && st.WorkspaceId == workspace.Id && st.MonitorIndices.Count == 0
+		);
+	}
+
 	[Theory, AutoSubstituteData]
 	public void ExitWhim(IContext ctx)
 	{
