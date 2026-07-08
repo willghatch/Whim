@@ -329,6 +329,36 @@ public class CoreCommandsTests
 		Assert.Contains(transforms, t => t.Equals(new RemoveWorkspaceByIdTransform(workspace.Id)));
 	}
 
+	[InlineAutoSubstituteData<StoreCustomization>("whim.core.move_current_workspace_to_next_monitor", false)]
+	[InlineAutoSubstituteData<StoreCustomization>("whim.core.move_current_workspace_to_previous_monitor", true)]
+	[Theory]
+	internal void MoveCurrentWorkspaceToMonitor(
+		string commandName,
+		bool reverse,
+		IContext ctx,
+		MutableRootSector root,
+		List<object> transforms
+	)
+	{
+		// Given there is an active workspace
+		Workspace workspace = CreateWorkspace();
+		AddActiveWorkspaceToStore(root, workspace);
+
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		ICommand command = testUtils.GetCommand(commandName);
+
+		// When
+		command.TryExecute();
+
+		// Then the workspace is moved to the adjacent monitor, with focus following by default
+		Assert.Contains(
+			transforms,
+			t => t.Equals(new MoveWorkspaceToAdjacentMonitorTransform(default, reverse, FocusWorkspaceWindow: true))
+		);
+	}
+
 	[Theory, AutoSubstituteData<StoreCustomization>]
 	internal void PinWorkspaceToCurrentMonitor(IContext ctx, MutableRootSector root, List<object> transforms)
 	{
