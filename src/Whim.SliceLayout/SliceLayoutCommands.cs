@@ -45,6 +45,16 @@ public class SliceLayoutCommands : PluginCommands
 				identifier: "focus.demote",
 				title: "Demote focus in stack",
 				callback: () => _sliceLayoutPlugin.DemoteFocusInStack()
+			)
+			.Add(
+				identifier: "primary.increase",
+				title: "Increase the number of primary windows",
+				callback: () => _sliceLayoutPlugin.IncreasePrimaryCount()
+			)
+			.Add(
+				identifier: "primary.decrease",
+				title: "Decrease the number of primary windows",
+				callback: () => _sliceLayoutPlugin.DecreasePrimaryCount()
 			);
 	}
 }

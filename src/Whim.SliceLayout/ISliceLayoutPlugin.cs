@@ -44,6 +44,16 @@ public interface ISliceLayoutPlugin : IPlugin
 	string DemoteFocusActionName { get; }
 
 	/// <summary>
+	/// The name of the action that increases the number of windows in the primary area.
+	/// </summary>
+	string IncreasePrimaryCountActionName { get; }
+
+	/// <summary>
+	/// The name of the action that decreases the number of windows in the primary area.
+	/// </summary>
+	string DecreasePrimaryCountActionName { get; }
+
+	/// <summary>
 	/// The type of insertion to use when adding a window to a slice.
 	/// </summary>
 	WindowInsertionType WindowInsertionType { get; set; }
@@ -83,4 +93,16 @@ public interface ISliceLayoutPlugin : IPlugin
 	/// is used.
 	/// </param>
 	void DemoteFocusInStack(IWindow? window = null);
+
+	/// <summary>
+	/// Increases the number of windows in the primary area of the active workspace's slice layout by
+	/// one. The count is tracked per-workspace (in the layout engine instance).
+	/// </summary>
+	void IncreasePrimaryCount();
+
+	/// <summary>
+	/// Decreases the number of windows in the primary area of the active workspace's slice layout by
+	/// one, to a minimum of one. The count is tracked per-workspace (in the layout engine instance).
+	/// </summary>
+	void DecreasePrimaryCount();
 }

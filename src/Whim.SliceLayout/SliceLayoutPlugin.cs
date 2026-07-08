@@ -29,6 +29,12 @@ public class SliceLayoutPlugin(IContext context) : ISliceLayoutPlugin
 	public string DemoteFocusActionName => $"{Name}.focus.demote";
 
 	/// <inheritdoc />
+	public string IncreasePrimaryCountActionName => $"{Name}.primary.increase";
+
+	/// <inheritdoc />
+	public string DecreasePrimaryCountActionName => $"{Name}.primary.decrease";
+
+	/// <inheritdoc />
 	public IPluginCommands PluginCommands => new SliceLayoutCommands(this);
 
 	/// <inheritdoc />
@@ -103,6 +109,20 @@ public class SliceLayoutPlugin(IContext context) : ISliceLayoutPlugin
 			Name = promote ? PromoteFocusActionName : DemoteFocusActionName,
 			Window = definedWindow,
 		};
+		_context.Store.Dispatch(new LayoutEngineCustomActionTransform(workspace.Id, action));
+	}
+
+	/// <inheritdoc />
+	public void IncreasePrimaryCount() => ChangePrimaryCount(IncreasePrimaryCountActionName);
+
+	/// <inheritdoc />
+	public void DecreasePrimaryCount() => ChangePrimaryCount(DecreasePrimaryCountActionName);
+
+	private void ChangePrimaryCount(string actionName)
+	{
+		IWorkspace workspace = _context.Store.Pick(Pickers.PickActiveWorkspace());
+
+		LayoutEngineCustomAction action = new() { Name = actionName, Window = null };
 		_context.Store.Dispatch(new LayoutEngineCustomActionTransform(workspace.Id, action));
 	}
 }

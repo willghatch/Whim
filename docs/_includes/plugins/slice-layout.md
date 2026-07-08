@@ -8,3 +8,5 @@
 | `whim.slice_layout.window.demote`             | Demote window in stack             | No default keybind |
 | `whim.slice_layout.focus.promote`             | Promote focus in stack             | No default keybind |
 | `whim.slice_layout.focus.demote`              | Demote focus in stack              | No default keybind |
+| `whim.slice_layout.primary.increase`          | Increase the number of primary windows | No default keybind |
+| `whim.slice_layout.primary.decrease`          | Decrease the number of primary windows | No default keybind |
