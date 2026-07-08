@@ -332,6 +332,11 @@ internal class CoreCommands : PluginCommands
 					)
 			)
 			.Add(
+				identifier: "close_workspace_on_current_monitor",
+				title: "Close the current workspace on the current monitor (unless it is the last one)",
+				callback: () => _context.Store.Dispatch(new RemoveWorkspaceOnMonitorTransform())
+			)
+			.Add(
 				identifier: "close_current_workspace",
 				title: "Close the current workspace",
 				callback: () =>

@@ -54,6 +54,7 @@ Core commands have identifiers under the `whim.core` namespace.
 | `whim.core.swap_workspace_order_previous`                | Swap the current workspace's order with the previous workspace\*                | No default keybind                                   |
 | `whim.core.pin_workspace_to_current_monitor`             | Pin the current workspace to the current monitor                                | No default keybind                                   |
 | `whim.core.unpin_workspace`                              | Unpin the current workspace, allowing it on any monitor                         | No default keybind                                   |
+| `whim.core.close_workspace_on_current_monitor`           | Close the current workspace on the current monitor (fails if it is the last)\*  | No default keybind                                   |
 | `whim.core.close_current_workspace`                      | Close the current workspace                                                     | <kbd>Win</kbd> + <kbd>Ctrl</kbd> + <kbd>W</kbd>      |
 | `whim.core.exit_whim`                                    | Exit Whim                                                                       | No default keybind                                   |
 | `whim.core.restart_whim`                                 | Restart Whim                                                                    | No default keybind                                   |
