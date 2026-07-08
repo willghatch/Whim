@@ -34,6 +34,17 @@ public class WorkspaceRenamedEventArgs : WorkspaceEventArgs
 }
 
 /// <summary>
+/// Event arguments for when the order of workspaces has changed.
+/// </summary>
+public class WorkspaceOrderChangedEventArgs : EventArgs
+{
+	/// <summary>
+	/// The workspace ids in their new order.
+	/// </summary>
+	public required ImmutableArray<WorkspaceId> WorkspaceOrder { get; init; }
+}
+
+/// <summary>
 /// Event arguments for when a workspace has started performing a layout.
 /// </summary>
 public class WorkspaceLayoutStartedEventArgs : WorkspaceEventArgs { }

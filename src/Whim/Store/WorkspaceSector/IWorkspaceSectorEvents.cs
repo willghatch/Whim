@@ -26,6 +26,11 @@ public interface IWorkspaceSectorEvents
 	event EventHandler<ActiveLayoutEngineChangedEventArgs>? ActiveLayoutEngineChanged;
 
 	/// <summary>
+	/// Event raised when the order of workspaces has changed.
+	/// </summary>
+	event EventHandler<WorkspaceOrderChangedEventArgs>? WorkspaceOrderChanged;
+
+	/// <summary>
 	/// Event raised when a workspace has started its layout.
 	/// </summary>
 	event EventHandler<WorkspaceLayoutStartedEventArgs>? WorkspaceLayoutStarted;

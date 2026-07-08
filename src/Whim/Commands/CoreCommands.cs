@@ -309,6 +309,16 @@ internal class CoreCommands : PluginCommands
 				callback: () => _context.Store.Dispatch(new CreateWorkspaceOnMonitorTransform())
 			)
 			.Add(
+				identifier: "swap_workspace_order_next",
+				title: "Swap the current workspace's order with the next workspace",
+				callback: () => _context.Store.Dispatch(new SwapWorkspaceOrderTransform(Reverse: false))
+			)
+			.Add(
+				identifier: "swap_workspace_order_previous",
+				title: "Swap the current workspace's order with the previous workspace",
+				callback: () => _context.Store.Dispatch(new SwapWorkspaceOrderTransform(Reverse: true))
+			)
+			.Add(
 				identifier: "pin_workspace_to_current_monitor",
 				title: "Pin the current workspace to the current monitor",
 				callback: PinWorkspaceToCurrentMonitor

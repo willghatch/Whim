@@ -50,6 +50,8 @@ Core commands have identifiers under the `whim.core` namespace.
 | `whim.core.move_current_workspace_to_next_monitor`       | Move the current workspace to the next monitor                                  | No default keybind                                   |
 | `whim.core.move_current_workspace_to_previous_monitor`   | Move the current workspace to the previous monitor                              | No default keybind                                   |
 | `whim.core.create_workspace_on_current_monitor`         | Create a new workspace pinned to the current monitor                            | No default keybind                                   |
+| `whim.core.swap_workspace_order_next`                    | Swap the current workspace's order with the next workspace\*                    | No default keybind                                   |
+| `whim.core.swap_workspace_order_previous`                | Swap the current workspace's order with the previous workspace\*                | No default keybind                                   |
 | `whim.core.pin_workspace_to_current_monitor`             | Pin the current workspace to the current monitor                                | No default keybind                                   |
 | `whim.core.unpin_workspace`                              | Unpin the current workspace, allowing it on any monitor                         | No default keybind                                   |
 | `whim.core.close_current_workspace`                      | Close the current workspace                                                     | <kbd>Win</kbd> + <kbd>Ctrl</kbd> + <kbd>W</kbd>      |

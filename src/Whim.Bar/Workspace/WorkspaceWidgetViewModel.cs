@@ -36,6 +36,7 @@ internal class WorkspaceWidgetViewModel : IDisposable
 		_context.Store.WorkspaceEvents.WorkspaceRemoved += WorkspaceEvents_WorkspaceRemoved;
 		_context.Store.MapEvents.MonitorWorkspaceChanged += MapEvents_MonitorWorkspaceChanged;
 		_context.Store.WorkspaceEvents.WorkspaceRenamed += WorkspaceEvents_WorkspaceRenamed;
+		_context.Store.WorkspaceEvents.WorkspaceOrderChanged += WorkspaceEvents_WorkspaceOrderChanged;
 
 		UpdateWorkspacesCollection();
 	}
@@ -63,6 +64,9 @@ internal class WorkspaceWidgetViewModel : IDisposable
 		UpdateWorkspacesCollection();
 
 	private void WorkspaceEvents_WorkspaceRemoved(object? sender, WorkspaceEventArgs args) =>
+		UpdateWorkspacesCollection();
+
+	private void WorkspaceEvents_WorkspaceOrderChanged(object? sender, WorkspaceOrderChangedEventArgs args) =>
 		UpdateWorkspacesCollection();
 
 	private void MapEvents_MonitorWorkspaceChanged(object? sender, MonitorWorkspaceChangedEventArgs args)
@@ -101,6 +105,7 @@ internal class WorkspaceWidgetViewModel : IDisposable
 				_context.Store.WorkspaceEvents.WorkspaceRemoved -= WorkspaceEvents_WorkspaceRemoved;
 				_context.Store.MapEvents.MonitorWorkspaceChanged -= MapEvents_MonitorWorkspaceChanged;
 				_context.Store.WorkspaceEvents.WorkspaceRenamed -= WorkspaceEvents_WorkspaceRenamed;
+				_context.Store.WorkspaceEvents.WorkspaceOrderChanged -= WorkspaceEvents_WorkspaceOrderChanged;
 			}
 
 			// free unmanaged resources (unmanaged objects) and override finalizer

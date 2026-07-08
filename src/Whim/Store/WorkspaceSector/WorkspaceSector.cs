@@ -47,6 +47,8 @@ internal class WorkspaceSector(IContext ctx, IInternalContext internalCtx)
 
 	public event EventHandler<ActiveLayoutEngineChangedEventArgs>? ActiveLayoutEngineChanged;
 
+	public event EventHandler<WorkspaceOrderChangedEventArgs>? WorkspaceOrderChanged;
+
 	public event EventHandler<WorkspaceLayoutStartedEventArgs>? WorkspaceLayoutStarted;
 
 	public event EventHandler<WorkspaceLayoutCompletedEventArgs>? WorkspaceLayoutCompleted;
@@ -74,6 +76,9 @@ internal class WorkspaceSector(IContext ctx, IInternalContext internalCtx)
 					break;
 				case ActiveLayoutEngineChangedEventArgs args:
 					ActiveLayoutEngineChanged?.Invoke(this, args);
+					break;
+				case WorkspaceOrderChangedEventArgs args:
+					WorkspaceOrderChanged?.Invoke(this, args);
 					break;
 				default:
 					break;
