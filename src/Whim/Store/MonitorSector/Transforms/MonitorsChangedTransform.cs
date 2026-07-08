@@ -61,6 +61,14 @@ internal record MonitorsChangedTransform : Transform
 
 		if (addedMonitors.Count != 0 || removedMonitors.Count != 0)
 		{
+			// Keep sticky monitor pins pointing at the same physical monitors as indices shift,
+			// moving pins to removed monitors onto the lowest index monitor.
+			mutableRootSector.MapSector.StickyWorkspaceMonitorIndexMap =
+				mutableRootSector.MapSector.StickyWorkspaceMonitorIndexMap.RemapStickyMonitorIndices(
+					previousMonitors,
+					sector.Monitors
+				);
+
 			UpdateMapSector(ctx, mutableRootSector, addedMonitors, removedMonitors);
 		}
 
