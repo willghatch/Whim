@@ -3,6 +3,9 @@ namespace Whim;
 /// <summary>
 /// Moves the workspace with <paramref name="WorkspaceId"/> to the adjacent monitor. The workspace
 /// currently shown on the adjacent monitor is swapped onto the workspace's original monitor.
+///
+/// If either workspace is pinned (sticky) to its monitor, its pin follows the move so that the
+/// workspace remains valid on - and stays pinned to - the monitor it ends up on.
 /// </summary>
 /// <param name="WorkspaceId">
 /// The id of the workspace to move. Defaults to the active workspace.
@@ -47,9 +50,46 @@ public record MoveWorkspaceToAdjacentMonitorTransform(
 			return Unit.Result;
 		}
 
+		ImmutableArray<IMonitor> monitors = rootSector.MonitorSector.Monitors;
+		int currentIndex = monitors.IndexOf(currentMonitor);
+		int nextIndex = monitors.IndexOf(nextMonitor);
+
+		// If either workspace is pinned, move its pin with it so the swap is valid and stays pinned.
+		// This must happen before activating, since activation rejects monitors a workspace is not
+		// sticky to.
+		RepinIfSticky(rootSector.MapSector, workspaceId, currentIndex, nextIndex);
+
+		if (ctx.Store.Pick(PickWorkspaceByMonitor(nextMonitor.Handle)).TryGet(out IWorkspace displacedWorkspace))
+		{
+			RepinIfSticky(rootSector.MapSector, displacedWorkspace.Id, nextIndex, currentIndex);
+		}
+
 		// Activating the workspace on the adjacent monitor swaps the two monitors' workspaces.
 		return ctx.Store.Dispatch(
 			new ActivateWorkspaceTransform(workspaceId, nextMonitor.Handle, FocusWorkspaceWindow)
+		);
+	}
+
+	/// <summary>
+	/// If <paramref name="workspaceId"/> is pinned to <paramref name="fromIndex"/>, re-pin that entry
+	/// to <paramref name="toIndex"/>. Unpinned workspaces are left free.
+	/// </summary>
+	private static void RepinIfSticky(MapSector mapSector, WorkspaceId workspaceId, int fromIndex, int toIndex)
+	{
+		if (!mapSector.StickyWorkspaceMonitorIndexMap.TryGetValue(workspaceId, out ImmutableArray<int> indices))
+		{
+			return;
+		}
+
+		SortedSet<int> updated = [];
+		foreach (int index in indices)
+		{
+			updated.Add(index == fromIndex ? toIndex : index);
+		}
+
+		mapSector.StickyWorkspaceMonitorIndexMap = mapSector.StickyWorkspaceMonitorIndexMap.SetItem(
+			workspaceId,
+			[.. updated]
 		);
 	}
 }

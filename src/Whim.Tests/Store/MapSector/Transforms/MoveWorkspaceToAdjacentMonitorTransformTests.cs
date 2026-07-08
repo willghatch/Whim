@@ -73,6 +73,36 @@ public class MoveWorkspaceToAdjacentMonitorTransformTests
 		);
 	}
 
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void PinnedWorkspaces_MoveAndSwapPins(IContext ctx, MutableRootSector rootSector)
+	{
+		// Given two monitors, each with a workspace pinned to it
+		Workspace workspace1 = CreateWorkspace();
+		Workspace workspace2 = CreateWorkspace();
+
+		IMonitor monitor1 = CreateMonitor((HMONITOR)1);
+		IMonitor monitor2 = CreateMonitor((HMONITOR)2);
+
+		PopulateMonitorWorkspaceMap(rootSector, monitor1, workspace1);
+		PopulateMonitorWorkspaceMap(rootSector, monitor2, workspace2);
+
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap = rootSector
+			.MapSector.StickyWorkspaceMonitorIndexMap.SetItem(workspace1.Id, [0])
+			.SetItem(workspace2.Id, [1]);
+
+		MoveWorkspaceToAdjacentMonitorTransform sut = new(workspace1.Id);
+
+		// When we move the pinned workspace to the next monitor
+		var result = ctx.Store.Dispatch(sut);
+
+		// Then the workspaces are swapped and their pins follow them
+		Assert.True(result.IsSuccessful);
+		Assert.Equal(workspace1.Id, rootSector.MapSector.MonitorWorkspaceMap[monitor2.Handle]);
+		Assert.Equal(workspace2.Id, rootSector.MapSector.MonitorWorkspaceMap[monitor1.Handle]);
+		Assert.Equal([1], rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspace1.Id]);
+		Assert.Equal([0], rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspace2.Id]);
+	}
+
 	[Theory]
 	[InlineAutoSubstituteData<StoreCustomization>(true)]
 	[InlineAutoSubstituteData<StoreCustomization>(false)]
