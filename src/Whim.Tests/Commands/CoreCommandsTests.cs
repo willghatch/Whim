@@ -387,6 +387,25 @@ public class CoreCommandsTests
 	}
 
 	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void CloseWorkspaceOnCurrentMonitor(IContext ctx, MutableRootSector root, List<object> transforms)
+	{
+		// Given there is an active workspace on a monitor
+		Workspace workspace = CreateWorkspace();
+		AddActiveWorkspaceToStore(root, workspace);
+
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		ICommand command = testUtils.GetCommand("whim.core.close_workspace_on_current_monitor");
+
+		// When
+		command.TryExecute();
+
+		// Then the current workspace on the current monitor is removed
+		Assert.Contains(transforms, t => t.Equals(new RemoveWorkspaceOnMonitorTransform()));
+	}
+
+	[Theory, AutoSubstituteData<StoreCustomization>]
 	internal void CreateWorkspaceOnCurrentMonitor(IContext ctx, MutableRootSector root, List<object> transforms)
 	{
 		// Given there is an active workspace and monitor
