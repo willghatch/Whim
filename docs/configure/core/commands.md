@@ -49,6 +49,7 @@ Core commands have identifiers under the `whim.core` namespace.
 | `whim.core.focus_layout.toggle_maximized`                | Toggle the maximized state for the current FocusLayoutEngine                    | No default keybind                                   |
 | `whim.core.move_current_workspace_to_next_monitor`       | Move the current workspace to the next monitor                                  | No default keybind                                   |
 | `whim.core.move_current_workspace_to_previous_monitor`   | Move the current workspace to the previous monitor                              | No default keybind                                   |
+| `whim.core.create_workspace_on_current_monitor`         | Create a new workspace pinned to the current monitor                            | No default keybind                                   |
 | `whim.core.pin_workspace_to_current_monitor`             | Pin the current workspace to the current monitor                                | No default keybind                                   |
 | `whim.core.unpin_workspace`                              | Unpin the current workspace, allowing it on any monitor                         | No default keybind                                   |
 | `whim.core.close_current_workspace`                      | Close the current workspace                                                     | <kbd>Win</kbd> + <kbd>Ctrl</kbd> + <kbd>W</kbd>      |

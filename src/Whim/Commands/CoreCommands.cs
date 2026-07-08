@@ -304,6 +304,11 @@ internal class CoreCommands : PluginCommands
 				callback: () => _context.Store.Dispatch(new MoveWorkspaceToAdjacentMonitorTransform(Reverse: true))
 			)
 			.Add(
+				identifier: "create_workspace_on_current_monitor",
+				title: "Create a new workspace pinned to the current monitor",
+				callback: () => _context.Store.Dispatch(new CreateWorkspaceOnMonitorTransform())
+			)
+			.Add(
 				identifier: "pin_workspace_to_current_monitor",
 				title: "Pin the current workspace to the current monitor",
 				callback: PinWorkspaceToCurrentMonitor
