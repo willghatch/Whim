@@ -24,6 +24,8 @@ internal class KeybindManager(IContext context) : IKeybindManager
 		}
 	}
 
+	public bool SuppressBareWinKey { get; set; }
+
 	private readonly HashSet<VIRTUAL_KEY> _modifiers = [];
 	public IEnumerable<VIRTUAL_KEY> Modifiers => _modifiers;
 

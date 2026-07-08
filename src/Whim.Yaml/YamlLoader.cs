@@ -173,6 +173,11 @@ public static class YamlLoader
 			ctx.KeybindManager.UnifyKeyModifiers = unifyKeyModifiers;
 		}
 
+		if (keybinds.SuppressBareWinKey?.TryGetBoolean(out bool suppressBareWinKey) == true)
+		{
+			ctx.KeybindManager.SuppressBareWinKey = suppressBareWinKey;
+		}
+
 		if (keybinds.Entries is not { } entries)
 		{
 			Logger.Debug("No keybinds found.");

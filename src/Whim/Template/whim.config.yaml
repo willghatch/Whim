@@ -52,6 +52,7 @@ keybinds:
       keybind: LCtrl+LShift+LAlt+J
 
   unify_key_modifiers: true
+  suppress_bare_win_key: false
 
 filters:
   entries: []

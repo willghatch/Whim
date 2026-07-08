@@ -43,6 +43,8 @@ The `Mods` are a list of modifiers that are pressed in conjunction with the key.
 
 To treat key modifiers like `LWin` and `RWin` the same, see <xref:Whim.IKeybindManager.UnifyKeyModifiers>.
 
+To prevent Windows from opening the Start menu when the Windows key is pressed and released without another key, see <xref:Whim.IKeybindManager.SuppressBareWinKey>.
+
 > [!NOTE]
 > Each _command_ can only be bound to a single keybind - subsequent bindings to the same command will overwrite earlier ones. However, each _keybind_ can be assigned to multiple commands. If more than one command is bound to the same Keybind, they will be triggered in the order of their assignment.
 

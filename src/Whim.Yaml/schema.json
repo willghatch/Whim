@@ -34,6 +34,12 @@
           "type": "boolean",
           "description": "Whether to treat key modifiers like `LWin` and `RWin` as the same key modifier. Defaults to `true`.",
           "default": true
+        },
+
+        "suppress_bare_win_key": {
+          "type": "boolean",
+          "description": "Whether to send a dummy key tap when the Windows key is pressed, preventing Windows from treating the Windows key release as a Start menu shortcut. Defaults to `false`.",
+          "default": false
         }
       }
     },

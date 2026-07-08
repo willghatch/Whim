@@ -20,6 +20,12 @@ public interface IKeybindManager
 	bool UnifyKeyModifiers { get; set; }
 
 	/// <summary>
+	/// Whether to send a dummy key tap when the Windows key is pressed, preventing Windows from
+	/// treating the Windows key release as a Start menu shortcut.
+	/// </summary>
+	bool SuppressBareWinKey { get; set; }
+
+	/// <summary>
 	/// All the modifiers which are currently being used.
 	/// </summary>
 	IEnumerable<VIRTUAL_KEY> Modifiers { get; }

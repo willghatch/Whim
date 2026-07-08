@@ -10,6 +10,7 @@ namespace Whim;
 /// </summary>
 internal class KeybindHook : IKeybindHook
 {
+	private const VIRTUAL_KEY _startMenuSuppressionKey = (VIRTUAL_KEY)0xE8;
 	private readonly IContext _context;
 	private readonly IInternalContext _internalContext;
 	private readonly HOOKPROC _lowLevelKeyboardProc;
@@ -69,6 +70,11 @@ internal class KeybindHook : IKeybindHook
 
 		VIRTUAL_KEY key = (VIRTUAL_KEY)kbdll.vkCode;
 
+		if (_context.KeybindManager.SuppressBareWinKey && key is VIRTUAL_KEY.VK_LWIN or VIRTUAL_KEY.VK_RWIN)
+		{
+			SendStartMenuSuppressionKeyTap();
+		}
+
 		// Ignore key modifiers which are a modifier.
 		if (_context.KeybindManager.Modifiers.Contains(key))
 		{
@@ -99,6 +105,23 @@ internal class KeybindHook : IKeybindHook
 
 	private bool IsModifierPressed(VIRTUAL_KEY key) =>
 		(_internalContext.CoreNativeManager.GetKeyState((int)key) & 0x8000) == 0x8000;
+
+	private void SendStartMenuSuppressionKeyTap()
+	{
+		unsafe
+		{
+			INPUT down = CreateKeyboardInput(_startMenuSuppressionKey, default);
+			INPUT up = CreateKeyboardInput(_startMenuSuppressionKey, KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP);
+			_internalContext.CoreNativeManager.SendInput([down, up], sizeof(INPUT));
+		}
+	}
+
+	private static INPUT CreateKeyboardInput(VIRTUAL_KEY key, KEYBD_EVENT_FLAGS flags) =>
+		new()
+		{
+			type = INPUT_TYPE.INPUT_KEYBOARD,
+			Anonymous = new INPUT._Anonymous_e__Union() { ki = new KEYBDINPUT() { wVk = key, dwFlags = flags } },
+		};
 
 	private bool DoKeyboardEvent(Keybind keybind)
 	{

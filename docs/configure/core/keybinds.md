@@ -38,6 +38,10 @@ A command is a string that represents a command that can be executed by Whim. Th
 
 To treat key modifiers like `LWin` and `RWin` the same, set `unify_key_modifiers` to `true`.
 
+## Suppress Bare Win Key
+
+To prevent Windows from opening the Start menu when the Windows key is pressed and released without another key, set `suppress_bare_win_key` to `true`.
+
 ## Keybinds Example
 
 ```yaml
@@ -65,4 +69,5 @@ keybinds:
       keybind: Win+LCtrl+Q
 
   unify_key_modifiers: true
+  suppress_bare_win_key: false
 ```
