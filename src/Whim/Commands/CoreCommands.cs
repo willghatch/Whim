@@ -363,8 +363,7 @@ internal class CoreCommands : PluginCommands
 				{
 					WorkspaceId activeWorkspaceId = _context.Store.Pick(PickActiveWorkspaceId());
 					_context.Store.Dispatch(new RemoveWorkspaceByIdTransform(activeWorkspaceId));
-				},
-				keybind: new Keybind(IKeybind.WinCtrl, VIRTUAL_KEY.VK_W)
+				}
 			)
 			.Add(identifier: "exit_whim", title: "Exit Whim", callback: () => _context.Exit())
 			.Add(
