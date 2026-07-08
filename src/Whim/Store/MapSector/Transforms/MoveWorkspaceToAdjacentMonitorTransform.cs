@@ -1,11 +1,17 @@
 namespace Whim;
 
 /// <summary>
-/// Moves the workspace with <paramref name="WorkspaceId"/> to the adjacent monitor. The workspace
-/// currently shown on the adjacent monitor is swapped onto the workspace's original monitor.
+/// Moves the workspace with <paramref name="WorkspaceId"/> to the adjacent monitor.
 ///
-/// If either workspace is pinned (sticky) to its monitor, its pin follows the move so that the
-/// workspace remains valid on - and stays pinned to - the monitor it ends up on.
+/// The current monitor switches to another of its workspaces, and the target monitor gains the moved
+/// workspace (focused) without losing the workspace it was already showing - that workspace simply
+/// becomes hidden on the target monitor. This is not a swap: no workspace is moved onto the current
+/// monitor from the target.
+///
+/// This fails if the moved workspace is the last workspace on the current monitor, since the current
+/// monitor would have no other workspace to switch to.
+///
+/// If the moved workspace is pinned (sticky), its pin follows it to the target monitor.
 /// </summary>
 /// <param name="WorkspaceId">
 /// The id of the workspace to move. Defaults to the active workspace.
@@ -16,7 +22,7 @@ namespace Whim;
 /// </param>
 /// <param name="FocusWorkspaceWindow">
 /// When <see langword="true"/> (the default), focus follows the moved workspace to the adjacent
-/// monitor. When <see langword="false"/>, focus stays on the currently active workspace.
+/// monitor. When <see langword="false"/>, focus stays on the current monitor's new workspace.
 /// </param>
 public record MoveWorkspaceToAdjacentMonitorTransform(
 	WorkspaceId WorkspaceId = default,
@@ -50,23 +56,72 @@ public record MoveWorkspaceToAdjacentMonitorTransform(
 			return Unit.Result;
 		}
 
-		ImmutableArray<IMonitor> monitors = rootSector.MonitorSector.Monitors;
-		int currentIndex = monitors.IndexOf(currentMonitor);
-		int nextIndex = monitors.IndexOf(nextMonitor);
-
-		// If either workspace is pinned, move its pin with it so the swap is valid and stays pinned.
-		// This must happen before activating, since activation rejects monitors a workspace is not
-		// sticky to.
-		RepinIfSticky(rootSector.MapSector, workspaceId, currentIndex, nextIndex);
-
-		if (ctx.Store.Pick(PickWorkspaceByMonitor(nextMonitor.Handle)).TryGet(out IWorkspace displacedWorkspace))
+		// Find a workspace for the current monitor to switch to once the moved workspace leaves.
+		Result<WorkspaceId> replacementResult = FindReplacementWorkspace(ctx, rootSector, currentMonitor, workspaceId);
+		if (!replacementResult.TryGet(out WorkspaceId replacementId))
 		{
-			RepinIfSticky(rootSector.MapSector, displacedWorkspace.Id, nextIndex, currentIndex);
+			return Result.FromError<Unit>(replacementResult.Error!);
 		}
 
-		// Activating the workspace on the adjacent monitor swaps the two monitors' workspaces.
-		return ctx.Store.Dispatch(
-			new ActivateWorkspaceTransform(workspaceId, nextMonitor.Handle, FocusWorkspaceWindow)
+		// If the moved workspace is pinned, move its pin to the target monitor so it is valid there.
+		ImmutableArray<IMonitor> monitors = rootSector.MonitorSector.Monitors;
+		RepinIfSticky(rootSector.MapSector, workspaceId, monitors.IndexOf(currentMonitor), monitors.IndexOf(nextMonitor));
+
+		// Switch the current monitor to the replacement workspace. Because the moved workspace is not
+		// shown elsewhere, this deactivates it (rather than swapping anything onto the current monitor).
+		Result<Unit> replacementActivation = ctx.Store.Dispatch(
+			new ActivateWorkspaceTransform(replacementId, currentMonitor.Handle, FocusWorkspaceWindow: false)
+		);
+		if (!replacementActivation.IsSuccessful)
+		{
+			return replacementActivation;
+		}
+
+		// Show the moved workspace on the target monitor, focused. The target's previous workspace
+		// becomes hidden but stays assigned to that monitor.
+		return ctx.Store.Dispatch(new ActivateWorkspaceTransform(workspaceId, nextMonitor.Handle, FocusWorkspaceWindow));
+	}
+
+	/// <summary>
+	/// Finds a workspace, other than <paramref name="movedWorkspaceId"/>, which can be shown on
+	/// <paramref name="currentMonitor"/> and is not already shown on another monitor. Returns an error
+	/// if there is none - i.e. the moved workspace is the last workspace on the monitor.
+	/// </summary>
+	private static Result<WorkspaceId> FindReplacementWorkspace(
+		IContext ctx,
+		MutableRootSector rootSector,
+		IMonitor currentMonitor,
+		WorkspaceId movedWorkspaceId
+	)
+	{
+		Result<IReadOnlyList<IWorkspace>> monitorWorkspacesResult = ctx.Store.Pick(
+			PickStickyWorkspacesByMonitor(currentMonitor.Handle)
+		);
+		if (!monitorWorkspacesResult.TryGet(out IReadOnlyList<IWorkspace> monitorWorkspaces))
+		{
+			return Result.FromError<WorkspaceId>(monitorWorkspacesResult.Error!);
+		}
+
+		foreach (IWorkspace workspace in monitorWorkspaces)
+		{
+			if (workspace.Id == movedWorkspaceId)
+			{
+				continue;
+			}
+
+			if (rootSector.MapSector.MonitorWorkspaceMap.ContainsValue(workspace.Id))
+			{
+				// Already shown on some monitor; can't pull it here without disturbing that monitor.
+				continue;
+			}
+
+			return workspace.Id;
+		}
+
+		return Result.FromError<WorkspaceId>(
+			new WhimError(
+				$"Cannot move workspace {movedWorkspaceId}: it is the last workspace on monitor {currentMonitor.Handle}"
+			)
 		);
 	}
 

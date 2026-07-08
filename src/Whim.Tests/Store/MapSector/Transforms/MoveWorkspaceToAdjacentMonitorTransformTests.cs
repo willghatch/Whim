@@ -36,71 +36,70 @@ public class MoveWorkspaceToAdjacentMonitorTransformTests
 		Assert.Equal(workspace.Id, rootSector.MapSector.MonitorWorkspaceMap[monitor.Handle]);
 	}
 
-	[Theory]
-	[InlineAutoSubstituteData<StoreCustomization>(false, 2)]
-	[InlineAutoSubstituteData<StoreCustomization>(true, 3)]
-	internal void Success_SwapsWorkspaces(
-		bool reverse,
-		int expectedTargetMonitor,
-		IContext ctx,
-		MutableRootSector rootSector
-	)
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void LastWorkspaceOnMonitor_Fails(IContext ctx, MutableRootSector rootSector)
 	{
-		// Given three monitors each with a workspace, and workspace1 is on monitor1
-		Workspace workspace1 = CreateWorkspace();
-		Workspace workspace2 = CreateWorkspace();
-		Workspace workspace3 = CreateWorkspace();
+		// Given two monitors, each with a single workspace pinned to it
+		Workspace wA = CreateWorkspace();
+		Workspace wB = CreateWorkspace();
 
 		IMonitor monitor1 = CreateMonitor((HMONITOR)1);
 		IMonitor monitor2 = CreateMonitor((HMONITOR)2);
-		IMonitor monitor3 = CreateMonitor((HMONITOR)3);
 
-		PopulateMonitorWorkspaceMap(rootSector, monitor1, workspace1);
-		PopulateMonitorWorkspaceMap(rootSector, monitor2, workspace2);
-		PopulateMonitorWorkspaceMap(rootSector, monitor3, workspace3);
+		PopulateMonitorWorkspaceMap(rootSector, monitor1, wA);
+		PopulateMonitorWorkspaceMap(rootSector, monitor2, wB);
 
-		MoveWorkspaceToAdjacentMonitorTransform sut = new(workspace1.Id, reverse);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap = rootSector
+			.MapSector.StickyWorkspaceMonitorIndexMap.SetItem(wA.Id, [0])
+			.SetItem(wB.Id, [1]);
 
-		// When we move workspace1 to the adjacent monitor
+		MoveWorkspaceToAdjacentMonitorTransform sut = new(wA.Id);
+
+		// When we try to move the only workspace on monitor1
 		var result = ctx.Store.Dispatch(sut);
 
-		// Then workspace1 moves to the adjacent monitor, and that monitor's old workspace moves to monitor1
-		Assert.True(result.IsSuccessful);
-		Assert.Equal(workspace1.Id, rootSector.MapSector.MonitorWorkspaceMap[(HMONITOR)expectedTargetMonitor]);
-		Assert.Equal(
-			expectedTargetMonitor == 2 ? workspace2.Id : workspace3.Id,
-			rootSector.MapSector.MonitorWorkspaceMap[monitor1.Handle]
-		);
+		// Then it fails and nothing moves
+		Assert.False(result.IsSuccessful);
+		Assert.Equal(wA.Id, rootSector.MapSector.MonitorWorkspaceMap[monitor1.Handle]);
+		Assert.Equal(wB.Id, rootSector.MapSector.MonitorWorkspaceMap[monitor2.Handle]);
 	}
 
 	[Theory, AutoSubstituteData<StoreCustomization>]
-	internal void PinnedWorkspaces_MoveAndSwapPins(IContext ctx, MutableRootSector rootSector)
+	internal void MovesWorkspace_WithoutSwapping(IContext ctx, MutableRootSector rootSector)
 	{
-		// Given two monitors, each with a workspace pinned to it
-		Workspace workspace1 = CreateWorkspace();
-		Workspace workspace2 = CreateWorkspace();
+		// Given monitor1 shows wA and also has a hidden workspace wC, and monitor2 shows wB
+		Workspace wA = CreateWorkspace();
+		Workspace wB = CreateWorkspace();
+		Workspace wC = CreateWorkspace();
 
 		IMonitor monitor1 = CreateMonitor((HMONITOR)1);
 		IMonitor monitor2 = CreateMonitor((HMONITOR)2);
 
-		PopulateMonitorWorkspaceMap(rootSector, monitor1, workspace1);
-		PopulateMonitorWorkspaceMap(rootSector, monitor2, workspace2);
+		PopulateMonitorWorkspaceMap(rootSector, monitor1, wA);
+		PopulateMonitorWorkspaceMap(rootSector, monitor2, wB);
+		AddWorkspaceToStore(rootSector, wC);
 
+		// wA and wC are pinned to monitor1, wB to monitor2.
 		rootSector.MapSector.StickyWorkspaceMonitorIndexMap = rootSector
-			.MapSector.StickyWorkspaceMonitorIndexMap.SetItem(workspace1.Id, [0])
-			.SetItem(workspace2.Id, [1]);
+			.MapSector.StickyWorkspaceMonitorIndexMap.SetItem(wA.Id, [0])
+			.SetItem(wC.Id, [0])
+			.SetItem(wB.Id, [1]);
 
-		MoveWorkspaceToAdjacentMonitorTransform sut = new(workspace1.Id);
+		MoveWorkspaceToAdjacentMonitorTransform sut = new(wA.Id);
 
-		// When we move the pinned workspace to the next monitor
+		// When we move wA to the next monitor
 		var result = ctx.Store.Dispatch(sut);
 
-		// Then the workspaces are swapped and their pins follow them
+		// Then monitor1 switches to wC, monitor2 shows wA, and wB is hidden (not moved to monitor1)
 		Assert.True(result.IsSuccessful);
-		Assert.Equal(workspace1.Id, rootSector.MapSector.MonitorWorkspaceMap[monitor2.Handle]);
-		Assert.Equal(workspace2.Id, rootSector.MapSector.MonitorWorkspaceMap[monitor1.Handle]);
-		Assert.Equal([1], rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspace1.Id]);
-		Assert.Equal([0], rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspace2.Id]);
+		Assert.Equal(wC.Id, rootSector.MapSector.MonitorWorkspaceMap[monitor1.Handle]);
+		Assert.Equal(wA.Id, rootSector.MapSector.MonitorWorkspaceMap[monitor2.Handle]);
+		Assert.DoesNotContain(wB.Id, rootSector.MapSector.MonitorWorkspaceMap.Values);
+
+		// The moved workspace's pin follows it; the other pins are unchanged.
+		Assert.Equal([1], rootSector.MapSector.StickyWorkspaceMonitorIndexMap[wA.Id]);
+		Assert.Equal([1], rootSector.MapSector.StickyWorkspaceMonitorIndexMap[wB.Id]);
+		Assert.Equal([0], rootSector.MapSector.StickyWorkspaceMonitorIndexMap[wC.Id]);
 	}
 
 	[Theory]
@@ -113,25 +112,27 @@ public class MoveWorkspaceToAdjacentMonitorTransformTests
 		List<object> transforms
 	)
 	{
-		// Given two monitors each with a workspace
-		Workspace workspace1 = CreateWorkspace();
-		Workspace workspace2 = CreateWorkspace();
+		// Given monitor1 shows wA with a hidden wC, and monitor2 shows wB
+		Workspace wA = CreateWorkspace();
+		Workspace wB = CreateWorkspace();
+		Workspace wC = CreateWorkspace();
 
 		IMonitor monitor1 = CreateMonitor((HMONITOR)1);
 		IMonitor monitor2 = CreateMonitor((HMONITOR)2);
 
-		PopulateMonitorWorkspaceMap(rootSector, monitor1, workspace1);
-		PopulateMonitorWorkspaceMap(rootSector, monitor2, workspace2);
+		PopulateMonitorWorkspaceMap(rootSector, monitor1, wA);
+		PopulateMonitorWorkspaceMap(rootSector, monitor2, wB);
+		AddWorkspaceToStore(rootSector, wC);
 
-		MoveWorkspaceToAdjacentMonitorTransform sut = new(workspace1.Id, FocusWorkspaceWindow: focusWorkspaceWindow);
+		MoveWorkspaceToAdjacentMonitorTransform sut = new(wA.Id, FocusWorkspaceWindow: focusWorkspaceWindow);
 
 		// When we execute the transform
 		ctx.Store.Dispatch(sut);
 
-		// Then the workspace is activated on the target monitor with the given focus flag
+		// Then the moved workspace is activated on the target monitor with the given focus flag
 		Assert.Contains(
 			transforms,
-			t => t.Equals(new ActivateWorkspaceTransform(workspace1.Id, monitor2.Handle, focusWorkspaceWindow))
+			t => t.Equals(new ActivateWorkspaceTransform(wA.Id, monitor2.Handle, focusWorkspaceWindow))
 		);
 	}
 }
