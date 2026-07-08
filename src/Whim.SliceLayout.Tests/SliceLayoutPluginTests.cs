@@ -322,4 +322,40 @@ public class SliceLayoutPluginTests
 		Assert.Contains(ctx.GetTransforms(), t => (t as LayoutEngineCustomActionTransform) == expectedTransform);
 	}
 	#endregion
+
+	#region ChangePrimaryCount
+	[Theory, AutoSubstituteData<Customization>]
+	internal void IncreasePrimaryCount(IContext ctx, Workspace workspace)
+	{
+		// Given the active workspace
+		SliceLayoutPlugin plugin = new(ctx);
+
+		// When
+		plugin.IncreasePrimaryCount();
+
+		// Then the increase action is dispatched to the active workspace
+		LayoutEngineCustomActionTransform expectedTransform = new(
+			workspace.Id,
+			new LayoutEngineCustomAction { Name = plugin.IncreasePrimaryCountActionName, Window = null }
+		);
+		Assert.Contains(ctx.GetTransforms(), t => (t as LayoutEngineCustomActionTransform) == expectedTransform);
+	}
+
+	[Theory, AutoSubstituteData<Customization>]
+	internal void DecreasePrimaryCount(IContext ctx, Workspace workspace)
+	{
+		// Given the active workspace
+		SliceLayoutPlugin plugin = new(ctx);
+
+		// When
+		plugin.DecreasePrimaryCount();
+
+		// Then the decrease action is dispatched to the active workspace
+		LayoutEngineCustomActionTransform expectedTransform = new(
+			workspace.Id,
+			new LayoutEngineCustomAction { Name = plugin.DecreasePrimaryCountActionName, Window = null }
+		);
+		Assert.Contains(ctx.GetTransforms(), t => (t as LayoutEngineCustomActionTransform) == expectedTransform);
+	}
+	#endregion
 }

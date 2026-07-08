@@ -10,6 +10,63 @@ public class PerformCustomActionTests
 	private static readonly LayoutEngineIdentity identity = new();
 	private static readonly IRectangle<int> primaryMonitorBounds = new Rectangle<int>(0, 0, 100, 100);
 
+	#region ChangePrimaryCount
+	// In a primary-stack layout on a 100x100 monitor, the primary area is the left half (X == 0) and
+	// the stack/overflow is the right half (X == 50).
+	private static int CountPrimaryWindows(IEnumerable<IWindowState> states) =>
+		states.Count(state => state.Rectangle.X == 0);
+
+	private static ILayoutEngine ChangePrimary(ILayoutEngine engine, string actionName) =>
+		engine.PerformCustomAction(
+			new LayoutEngineCustomAction<IWindow>() { Name = actionName, Window = null, Payload = null! }
+		);
+
+	[Theory, AutoSubstituteData]
+	public void ChangePrimaryCount_IncreaseAndDecrease(IContext ctx, SliceLayoutPlugin plugin)
+	{
+		// Given a primary-stack layout with three windows (one primary, two in the stack)
+		ParentArea primaryStack =
+			new(isRow: true, (0.5, new SliceArea(order: 0, maxChildren: 1)), (0.5, new OverflowArea()));
+		ILayoutEngine sut = new SliceLayoutEngine(ctx, plugin, identity, primaryStack);
+		IWindow[] windows = [.. Enumerable.Range(0, 3).Select(_ => Substitute.For<IWindow>())];
+		foreach (IWindow window in windows)
+		{
+			sut = sut.AddWindow(window);
+		}
+
+		IMonitor monitor = Substitute.For<IMonitor>();
+
+		// Initially one window is in the primary area.
+		Assert.Equal(1, CountPrimaryWindows(sut.DoLayout(primaryMonitorBounds, monitor)));
+
+		// When we increase the primary count, two windows are in the primary area.
+		sut = ChangePrimary(sut, plugin.IncreasePrimaryCountActionName);
+		Assert.Equal(2, CountPrimaryWindows(sut.DoLayout(primaryMonitorBounds, monitor)));
+
+		// When we decrease it, it returns to one.
+		sut = ChangePrimary(sut, plugin.DecreasePrimaryCountActionName);
+		Assert.Equal(1, CountPrimaryWindows(sut.DoLayout(primaryMonitorBounds, monitor)));
+	}
+
+	[Theory, AutoSubstituteData]
+	public void DecreasePrimaryCount_ClampsToOne(IContext ctx, SliceLayoutPlugin plugin)
+	{
+		// Given a primary-stack layout whose primary already holds a single window
+		ParentArea primaryStack =
+			new(isRow: true, (0.5, new SliceArea(order: 0, maxChildren: 1)), (0.5, new OverflowArea()));
+		ILayoutEngine sut = new SliceLayoutEngine(ctx, plugin, identity, primaryStack).AddWindow(
+			Substitute.For<IWindow>()
+		);
+
+		// When we decrease the primary count below one
+		ILayoutEngine result = ChangePrimary(sut, plugin.DecreasePrimaryCountActionName);
+
+		// Then the engine is unchanged
+		Assert.Same(sut, result);
+	}
+
+	#endregion
+
 	#region PromoteWindowInStack
 	[Theory, AutoSubstituteData]
 	public void PromoteWindowInStack_CannotFindWindow(IContext ctx, SliceLayoutPlugin plugin, IWindow untrackedWindow)

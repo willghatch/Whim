@@ -99,4 +99,32 @@ public class SliceLayoutCommandsTests
 		// Then
 		plugin.Received(1).DemoteFocusInStack();
 	}
+
+	[Theory]
+	[AutoSubstituteData<SliceLayoutCommandsCustomization>]
+	public void IncreasePrimaryCount(ISliceLayoutPlugin plugin)
+	{
+		// Given
+		ICommand command = CreateSut(plugin, "whim.slicelayout.primary.increase");
+
+		// When
+		command.TryExecute();
+
+		// Then
+		plugin.Received(1).IncreasePrimaryCount();
+	}
+
+	[Theory]
+	[AutoSubstituteData<SliceLayoutCommandsCustomization>]
+	public void DecreasePrimaryCount(ISliceLayoutPlugin plugin)
+	{
+		// Given
+		ICommand command = CreateSut(plugin, "whim.slicelayout.primary.decrease");
+
+		// When
+		command.TryExecute();
+
+		// Then
+		plugin.Received(1).DecreasePrimaryCount();
+	}
 }
