@@ -183,6 +183,59 @@ public static partial class Pickers
 	}
 
 	/// <summary>
+	/// Get the non-minimized windows in the provided workspace, in a stable spatial order.
+	/// </summary>
+	/// <remarks>
+	/// The order is determined by each window's last laid-out position: a window is earlier in the
+	/// order if the top-left corner of its rectangle has a smaller <c>X</c>. Ties are broken by the
+	/// smaller <c>Y</c> (i.e., higher on the screen). Minimized windows are excluded, as they have no
+	/// meaningful position.
+	/// </remarks>
+	/// <param name="workspaceId">The workspace to get the ordered windows for. Defaults to the active workspace.</param>
+	/// <returns>
+	/// The ordered windows in the workspace, when passed to <see cref="IStore.Pick{TResult}(PurePicker{TResult})"/>.
+	/// If the workspace is not found, then an error will be returned.
+	/// </returns>
+	public static PurePicker<Result<IReadOnlyList<IWindow>>> PickWorkspaceWindowsInOrder(WorkspaceId workspaceId) =>
+		(IRootSector rootSector) =>
+			BaseWorkspacePicker<IReadOnlyList<IWindow>>(
+				workspaceId,
+				rootSector,
+				workspace =>
+				{
+					List<KeyValuePair<HWND, WindowPosition>> positioned = [];
+					foreach (KeyValuePair<HWND, WindowPosition> pair in workspace.WindowPositions)
+					{
+						if (pair.Value.WindowSize != WindowSize.Minimized)
+						{
+							positioned.Add(pair);
+						}
+					}
+
+					positioned.Sort(
+						(a, b) =>
+						{
+							int cmpX = a.Value.LastWindowRectangle.X.CompareTo(b.Value.LastWindowRectangle.X);
+							return cmpX != 0
+								? cmpX
+								: a.Value.LastWindowRectangle.Y.CompareTo(b.Value.LastWindowRectangle.Y);
+						}
+					);
+
+					List<IWindow> ordered = [];
+					foreach (KeyValuePair<HWND, WindowPosition> pair in positioned)
+					{
+						if (PickWindowByHandle(pair.Key)(rootSector).TryGet(out IWindow window))
+						{
+							ordered.Add(window);
+						}
+					}
+
+					return Result.FromValue<IReadOnlyList<IWindow>>(ordered);
+				}
+			);
+
+	/// <summary>
 	/// Get the last focused window in the provided workspace.
 	/// </summary>
 	/// <param name="workspaceId">The workspace to get the last focused window for. Defaults to the active workspace</param>

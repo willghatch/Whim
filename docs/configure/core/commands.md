@@ -20,6 +20,10 @@ Core commands have identifiers under the `whim.core` namespace.
 | `whim.core.focus_window_in_direction.right`              | Focus the window in the right direction                                         | <kbd>Win</kbd> + <kbd>Alt</kbd> + <kbd>RIGHT</kbd>   |
 | `whim.core.focus_window_in_direction.up`                 | Focus the window in the up direction                                            | <kbd>Win</kbd> + <kbd>Alt</kbd> + <kbd>UP</kbd>      |
 | `whim.core.focus_window_in_direction.down`               | Focus the window in the down direction                                          | <kbd>Win</kbd> + <kbd>Alt</kbd> + <kbd>DOWN</kbd>    |
+| `whim.core.focus_window_next`                            | Focus the next window in the workspace                                          | No default keybind                                   |
+| `whim.core.focus_window_previous`                        | Focus the previous window in the workspace                                      | No default keybind                                   |
+| `whim.core.swap_window_next`                             | Swap the current window with the next window in the workspace                   | No default keybind                                   |
+| `whim.core.swap_window_previous`                         | Swap the current window with the previous window in the workspace              | No default keybind                                   |
 | `whim.core.swap_window_in_direction.left`                | Swap the window with the window to the left                                     | <kbd>Win</kbd> + <kbd>LEFT</kbd>                     |
 | `whim.core.swap_window_in_direction.right`               | Swap the window with the window to the right                                    | <kbd>Win</kbd> + <kbd>RIGHT</kbd>                    |
 | `whim.core.swap_window_in_direction.up`                  | Swap the window with the window to the up                                       | <kbd>Win</kbd> + <kbd>UP</kbd>                       |
@@ -62,6 +66,8 @@ Core commands have identifiers under the `whim.core` namespace.
 | `whim.core.move_active_window_to_workspace_{idx}`        | Move active window to workspace `{idx}` (where `idx` is an `int` 1, 2, ...9, 0) | No default keybind                                   |
 
 \* These commands account for [sticky workspaces](workspaces.md#sticky-workspaces) when determining the next/previous workspace.
+
+The `focus_window_next`/`focus_window_previous` and `swap_window_next`/`swap_window_previous` commands operate on all windows in the workspace, ordered by their on-screen position: a window comes earlier if the top-left corner of its most recent layout rectangle has a smaller `X` (ties broken by smaller `Y`). Minimized windows are excluded. The `swap_window_*` commands move the current window into the adjacent window's slot; whether that swaps or rotates the windows depends on the active layout engine's window-insertion behaviour.
 
 ## Plugin commands
 

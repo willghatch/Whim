@@ -54,6 +54,26 @@ internal class CoreCommands : PluginCommands
 				keybind: new Keybind(IKeybind.WinAlt, VIRTUAL_KEY.VK_DOWN)
 			)
 			.Add(
+				identifier: "focus_window_next",
+				title: "Focus the next window in the workspace",
+				callback: () => _context.Store.Dispatch(new FocusWindowInOrderTransform(Reverse: false))
+			)
+			.Add(
+				identifier: "focus_window_previous",
+				title: "Focus the previous window in the workspace",
+				callback: () => _context.Store.Dispatch(new FocusWindowInOrderTransform(Reverse: true))
+			)
+			.Add(
+				identifier: "swap_window_next",
+				title: "Swap the current window with the next window in the workspace",
+				callback: () => _context.Store.Dispatch(new SwapWindowInOrderTransform(Reverse: false))
+			)
+			.Add(
+				identifier: "swap_window_previous",
+				title: "Swap the current window with the previous window in the workspace",
+				callback: () => _context.Store.Dispatch(new SwapWindowInOrderTransform(Reverse: true))
+			)
+			.Add(
 				identifier: "swap_window_in_direction.left",
 				title: "Swap the window with the window to the left",
 				callback: () => _context.Store.Dispatch(new SwapWindowInDirectionTransform(Direction: Direction.Left)),
