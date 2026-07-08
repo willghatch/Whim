@@ -217,6 +217,70 @@ public class KeybindHookTests
 		Assert.Equal(0, (nint)result!);
 	}
 
+	[Theory, AutoSubstituteData<KeybindHookCustomization>]
+	internal void LowLevelKeyboardProc_WinKeySuppressBareWinKeyOff_PassesThroughWithoutDummyInput(
+		IContext ctx,
+		IInternalContext internalCtx
+	)
+	{
+		// Given
+		CaptureKeybindHook capture = CaptureKeybindHook.Create(internalCtx);
+		KeybindHook keybindHook = new(ctx, internalCtx);
+
+		ctx.KeybindManager.SuppressBareWinKey.Returns(false);
+		ctx.KeybindManager.Modifiers.Returns([VIRTUAL_KEY.VK_LWIN]);
+		internalCtx
+			.CoreNativeManager.PtrToStructure<KBDLLHOOKSTRUCT>(Arg.Any<nint>())
+			.Returns(new KBDLLHOOKSTRUCT { vkCode = (uint)VIRTUAL_KEY.VK_LWIN });
+
+		// When
+		keybindHook.PostInitialize();
+		LRESULT? result = capture.LowLevelKeyboardProc?.Invoke(0, PInvoke.WM_KEYDOWN, 0);
+
+		// Then
+		internalCtx.CoreNativeManager.DidNotReceive().SendInput(Arg.Any<INPUT[]>(), Arg.Any<int>());
+		internalCtx.CoreNativeManager.Received(1).CallNextHookEx(0, PInvoke.WM_KEYDOWN, 0);
+		Assert.Equal(0, (nint)result!);
+	}
+
+	[Theory, AutoSubstituteData<KeybindHookCustomization>]
+	internal void LowLevelKeyboardProc_WinKeySuppressBareWinKeyOn_SendsDummyInputAndPassesThrough(
+		IContext ctx,
+		IInternalContext internalCtx
+	)
+	{
+		// Given
+		CaptureKeybindHook capture = CaptureKeybindHook.Create(internalCtx);
+		KeybindHook keybindHook = new(ctx, internalCtx);
+
+		ctx.KeybindManager.SuppressBareWinKey.Returns(true);
+		ctx.KeybindManager.Modifiers.Returns([VIRTUAL_KEY.VK_LWIN]);
+		internalCtx
+			.CoreNativeManager.PtrToStructure<KBDLLHOOKSTRUCT>(Arg.Any<nint>())
+			.Returns(new KBDLLHOOKSTRUCT { vkCode = (uint)VIRTUAL_KEY.VK_LWIN });
+
+		// When
+		keybindHook.PostInitialize();
+		LRESULT? result = capture.LowLevelKeyboardProc?.Invoke(0, PInvoke.WM_KEYDOWN, 0);
+
+		// Then
+		internalCtx
+			.CoreNativeManager.Received(1)
+			.SendInput(
+				Arg.Is<INPUT[]>(inputs =>
+					inputs.Length == 2
+					&& inputs[0].type == INPUT_TYPE.INPUT_KEYBOARD
+					&& inputs[0].Anonymous.ki.wVk == (VIRTUAL_KEY)0xE8
+					&& inputs[1].type == INPUT_TYPE.INPUT_KEYBOARD
+					&& inputs[1].Anonymous.ki.wVk == (VIRTUAL_KEY)0xE8
+					&& inputs[1].Anonymous.ki.dwFlags == KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP
+				),
+				Arg.Any<int>()
+			);
+		internalCtx.CoreNativeManager.Received(1).CallNextHookEx(0, PInvoke.WM_KEYDOWN, 0);
+		Assert.Equal(0, (nint)result!);
+	}
+
 	public static readonly TheoryData<VIRTUAL_KEY[], VIRTUAL_KEY, Keybind> KeybindsToExecute = new()
 	{
 		// Standard modifier combinations

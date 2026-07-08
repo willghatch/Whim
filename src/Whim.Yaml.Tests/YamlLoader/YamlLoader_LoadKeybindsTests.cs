@@ -294,4 +294,57 @@ public class YamlLoader_LoadKeybindsTests
 		Assert.True(result);
 		ctx.KeybindManager.Received().UnifyKeyModifiers = config.Contains("true");
 	}
+
+	public static TheoryData<string, bool> SuppressBareWinKeyConfig =>
+		new()
+		{
+			{
+				"""
+					keybinds:
+					  suppress_bare_win_key: true
+					""",
+				true
+			},
+			{
+				"""
+					keybinds:
+					  suppress_bare_win_key: false
+					""",
+				true
+			},
+			{
+				"""
+					{
+					    "keybinds": {
+					        "suppress_bare_win_key": true
+					    }
+					}
+					""",
+				false
+			},
+			{
+				"""
+					{
+					    "keybinds": {
+					        "suppress_bare_win_key": false
+					    }
+					}
+					""",
+				false
+			},
+		};
+
+	[Theory, MemberAutoSubstituteData<YamlLoaderCustomization>(nameof(SuppressBareWinKeyConfig))]
+	public void Load_SuppressBareWinKey(string config, bool isYaml, IContext ctx)
+	{
+		// Given a valid config with suppressBareWinKey set
+		YamlLoaderTestUtils.SetupFileConfig(ctx, config, isYaml);
+
+		// When loading the config
+		bool result = YamlLoader.Load(ctx, showErrorWindow: false);
+
+		// Then the result is true, and suppressBareWinKey is set
+		Assert.True(result);
+		ctx.KeybindManager.Received().SuppressBareWinKey = config.Contains("true");
+	}
 }
