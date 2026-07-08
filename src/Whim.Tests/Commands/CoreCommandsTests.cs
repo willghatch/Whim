@@ -359,6 +359,33 @@ public class CoreCommandsTests
 		);
 	}
 
+	[InlineAutoSubstituteData<StoreCustomization>("whim.core.swap_workspace_order_next", false)]
+	[InlineAutoSubstituteData<StoreCustomization>("whim.core.swap_workspace_order_previous", true)]
+	[Theory]
+	internal void SwapWorkspaceOrder(
+		string commandName,
+		bool reverse,
+		IContext ctx,
+		MutableRootSector root,
+		List<object> transforms
+	)
+	{
+		// Given there is an active workspace
+		Workspace workspace = CreateWorkspace();
+		AddActiveWorkspaceToStore(root, workspace);
+
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		ICommand command = testUtils.GetCommand(commandName);
+
+		// When
+		command.TryExecute();
+
+		// Then the current workspace's order is swapped with the adjacent one
+		Assert.Contains(transforms, t => t.Equals(new SwapWorkspaceOrderTransform(default, reverse)));
+	}
+
 	[Theory, AutoSubstituteData<StoreCustomization>]
 	internal void CreateWorkspaceOnCurrentMonitor(IContext ctx, MutableRootSector root, List<object> transforms)
 	{
