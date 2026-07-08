@@ -72,6 +72,14 @@ public record SwapWindowInOrderTransform(
 			Y = (targetRect.Y + (targetRect.Height / 2.0) - workingArea.Y) / workingArea.Height,
 		};
 
-		return ctx.Store.Dispatch(new MoveWindowToPointInWorkspaceTransform(workspaceId, currentHandle, point));
+		Result<bool> moveResult = ctx.Store.Dispatch(
+			new MoveWindowToPointInWorkspaceTransform(workspaceId, currentHandle, point)
+		);
+		if (!moveResult.TryGet(out _))
+		{
+			return Result.FromError<Unit>(moveResult.Error!);
+		}
+
+		return Unit.Result;
 	}
 }
