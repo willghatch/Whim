@@ -294,6 +294,16 @@ internal class CoreCommands : PluginCommands
 					_context.Store.Pick(PickActiveLayoutEngine()).GetLayoutEngine<FocusLayoutEngine>() is not null
 			)
 			.Add(
+				identifier: "move_current_workspace_to_next_monitor",
+				title: "Move the current workspace to the next monitor",
+				callback: () => _context.Store.Dispatch(new MoveWorkspaceToAdjacentMonitorTransform(Reverse: false))
+			)
+			.Add(
+				identifier: "move_current_workspace_to_previous_monitor",
+				title: "Move the current workspace to the previous monitor",
+				callback: () => _context.Store.Dispatch(new MoveWorkspaceToAdjacentMonitorTransform(Reverse: true))
+			)
+			.Add(
 				identifier: "pin_workspace_to_current_monitor",
 				title: "Pin the current workspace to the current monitor",
 				callback: PinWorkspaceToCurrentMonitor
