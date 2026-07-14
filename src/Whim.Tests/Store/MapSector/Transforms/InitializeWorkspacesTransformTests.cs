@@ -271,4 +271,266 @@ public class InitializeWorkspacesTransformTests
 			.WindowSector.StartupWindows.Should()
 			.BeEquivalentTo([BrowserHandle, DiscordHandle, SpotifyHandle, BrokenHandle, VscodeHandle]);
 	}
+
+	/// <summary>
+	/// Marks the given handles as hidden, and all the other handles as visible.
+	/// </summary>
+	private static void Setup_HiddenWindows(IInternalContext internalCtx, params HWND[] hiddenHandles)
+	{
+		internalCtx.CoreNativeManager.IsWindowVisible(Arg.Any<HWND>()).Returns(true);
+
+		foreach (HWND handle in hiddenHandles)
+		{
+			internalCtx.CoreNativeManager.IsWindowVisible(handle).Returns(false);
+		}
+	}
+
+	/// <summary>
+	/// Makes every window pass the <see cref="WindowAddedTransform"/> filters.
+	/// </summary>
+	private static void Setup_StandardWindows(IInternalContext internalCtx)
+	{
+		internalCtx.CoreNativeManager.IsStandardWindow(Arg.Any<HWND>()).Returns(true);
+		internalCtx.CoreNativeManager.HasNoVisibleOwner(Arg.Any<HWND>()).Returns(true);
+	}
+
+	private static void Setup_SingleMonitor(MutableRootSector rootSector)
+	{
+		AddMonitorsToSector(rootSector, CreateMonitor(BrowserMonitor));
+		rootSector.WorkspaceSector.CreateLayoutEngines = () => [(id) => new ImmutableTestLayoutEngine()];
+	}
+
+	/// <summary>
+	/// A window which Whim hid in a previous run and never restored is shown again, so that it can
+	/// be seen by the user and by Whim.
+	/// </summary>
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void HiddenSavedWindow_IsShownAndRoutedToItsSavedWorkspace(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector
+	)
+	{
+		// Given the "Browser" workspace is configured and saved with a browser window which is
+		// still a window, but is hidden
+		rootSector.WorkspaceSector.WorkspacesToCreate =
+		[
+			new WorkspaceToCreate(Guid.NewGuid(), BrowserWorkspaceName, null, null),
+		];
+		AddWorkspacesToSavedState(
+			internalCtx,
+			new SavedWorkspace(
+				BrowserWorkspaceName,
+				[new SavedWindow(BrowserHandle, Rectangle.UnitSquare<double>())],
+				null
+			)
+		);
+		Setup_CreateWindow(ctx);
+		Setup_StandardWindows(internalCtx);
+		Setup_HiddenWindows(internalCtx, BrowserHandle);
+		Setup_SingleMonitor(rootSector);
+
+		internalCtx.CoreNativeManager.GetAllWindows().Returns(_ => new List<HWND>() { BrowserHandle });
+
+		InitializeWorkspacesTransform sut = new();
+
+		// When the transform is dispatched
+		var (result, _) = AssertRaises(ctx, rootSector, sut);
+
+		// Then the window is shown, and is in the "Browser" workspace
+		Assert.True(result.IsSuccessful);
+		ctx.NativeManager.Received(1).ShowWindowNoActivate(BrowserHandle);
+
+		Workspace browserWorkspace = rootSector.WorkspaceSector.Workspaces.Values.First(w =>
+			w.Name == BrowserWorkspaceName
+		);
+		Assert.Equal(browserWorkspace.Id, rootSector.MapSector.WindowWorkspaceMap[BrowserHandle]);
+	}
+
+	/// <summary>
+	/// The regression this feature exists for: a window hidden by a previous Whim run, whose saved
+	/// workspace is no longer configured, is shown again and picked up into some workspace, instead
+	/// of being lost.
+	/// </summary>
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void HiddenSavedWindow_WithoutMatchingWorkspace_IsShownAndAddedToAWorkspace(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector
+	)
+	{
+		// Given only the "Browser" workspace is configured, but the saved "Media" workspace has a
+		// hidden Discord window
+		rootSector.WorkspaceSector.WorkspacesToCreate =
+		[
+			new WorkspaceToCreate(Guid.NewGuid(), BrowserWorkspaceName, null, null),
+		];
+		AddWorkspacesToSavedState(
+			internalCtx,
+			new SavedWorkspace(
+				MediaWorkspaceName,
+				[new SavedWindow(DiscordHandle, Rectangle.UnitSquare<double>())],
+				null
+			)
+		);
+		Setup_CreateWindow(ctx);
+		Setup_StandardWindows(internalCtx);
+		Setup_HiddenWindows(internalCtx, DiscordHandle);
+		Setup_SingleMonitor(rootSector);
+
+		internalCtx
+			.CoreNativeManager.MonitorFromWindow(DiscordHandle, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONEAREST)
+			.Returns(_ => BrowserMonitor);
+		internalCtx.CoreNativeManager.GetAllWindows().Returns(_ => new List<HWND>() { DiscordHandle });
+
+		InitializeWorkspacesTransform sut = new();
+
+		// When the transform is dispatched
+		var (result, _) = AssertRaises(ctx, rootSector, sut);
+
+		// Then the window is shown, and is added to the workspace on the monitor it's on
+		Assert.True(result.IsSuccessful);
+		ctx.NativeManager.Received(1).ShowWindowNoActivate(DiscordHandle);
+
+		Workspace browserWorkspace = rootSector.WorkspaceSector.Workspaces.Values.First(w =>
+			w.Name == BrowserWorkspaceName
+		);
+		Assert.Equal(browserWorkspace.Id, rootSector.MapSector.WindowWorkspaceMap[DiscordHandle]);
+	}
+
+	/// <summary>
+	/// A saved window which the user can still see is left alone.
+	/// </summary>
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void VisibleSavedWindow_IsNotShown(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector
+	)
+	{
+		// Given the saved browser window is visible
+		rootSector.WorkspaceSector.WorkspacesToCreate =
+		[
+			new WorkspaceToCreate(Guid.NewGuid(), BrowserWorkspaceName, null, null),
+		];
+		AddWorkspacesToSavedState(
+			internalCtx,
+			new SavedWorkspace(
+				BrowserWorkspaceName,
+				[new SavedWindow(BrowserHandle, Rectangle.UnitSquare<double>())],
+				null
+			)
+		);
+		Setup_CreateWindow(ctx);
+		Setup_StandardWindows(internalCtx);
+		Setup_HiddenWindows(internalCtx);
+		Setup_SingleMonitor(rootSector);
+
+		internalCtx.CoreNativeManager.GetAllWindows().Returns(_ => new List<HWND>() { BrowserHandle });
+
+		InitializeWorkspacesTransform sut = new();
+
+		// When the transform is dispatched
+		var (result, _) = AssertRaises(ctx, rootSector, sut);
+
+		// Then the window is not shown again
+		Assert.True(result.IsSuccessful);
+		ctx.NativeManager.DidNotReceive().ShowWindowNoActivate(BrowserHandle);
+	}
+
+	/// <summary>
+	/// A saved handle which no longer belongs to a window is not resurrected.
+	/// </summary>
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void SavedHandleWhichIsNoLongerAWindow_IsNotShown(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector
+	)
+	{
+		// Given the saved browser handle is no longer a window
+		rootSector.WorkspaceSector.WorkspacesToCreate =
+		[
+			new WorkspaceToCreate(Guid.NewGuid(), BrowserWorkspaceName, null, null),
+		];
+		AddWorkspacesToSavedState(
+			internalCtx,
+			new SavedWorkspace(
+				BrowserWorkspaceName,
+				[new SavedWindow(BrowserHandle, Rectangle.UnitSquare<double>())],
+				null
+			)
+		);
+		Setup_StandardWindows(internalCtx);
+		Setup_HiddenWindows(internalCtx, BrowserHandle);
+		Setup_SingleMonitor(rootSector);
+
+		internalCtx.CoreNativeManager.IsWindow(BrowserHandle).Returns(false);
+		ctx.CreateWindow(BrowserHandle).Returns(Result.FromException<IWindow>(new Exception("nope")));
+		internalCtx.CoreNativeManager.GetAllWindows().Returns(_ => new List<HWND>());
+
+		InitializeWorkspacesTransform sut = new();
+
+		// When the transform is dispatched
+		var result = AssertDoesNotRaise(ctx, rootSector, sut);
+
+		// Then the dead handle is not shown
+		Assert.True(result.IsSuccessful);
+		ctx.NativeManager.DidNotReceive().ShowWindowNoActivate(BrowserHandle);
+	}
+
+	/// <summary>
+	/// A workspace which did not end up on a monitor is deactivated, so that the windows which were
+	/// shown by this transform are hidden and tracked, rather than floating over the shown workspace.
+	/// </summary>
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void WorkspaceWithoutMonitor_IsDeactivated(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector
+	)
+	{
+		// Given the "Browser" and "Code" workspaces are configured and saved with a window each,
+		// but there is only a single monitor
+		rootSector.WorkspaceSector.WorkspacesToCreate =
+		[
+			new WorkspaceToCreate(Guid.NewGuid(), BrowserWorkspaceName, null, null),
+			new WorkspaceToCreate(Guid.NewGuid(), CodeWorkspaceName, null, null),
+		];
+		AddWorkspacesToSavedState(
+			internalCtx,
+			new SavedWorkspace(
+				BrowserWorkspaceName,
+				[new SavedWindow(BrowserHandle, Rectangle.UnitSquare<double>())],
+				null
+			),
+			new SavedWorkspace(CodeWorkspaceName, [new SavedWindow(VscodeHandle, Rectangle.UnitSquare<double>())], null)
+		);
+		Setup_CreateWindow(ctx);
+		Setup_StandardWindows(internalCtx);
+		Setup_HiddenWindows(internalCtx, VscodeHandle);
+		Setup_SingleMonitor(rootSector);
+
+		internalCtx.CoreNativeManager.GetAllWindows().Returns(_ => new List<HWND>() { BrowserHandle, VscodeHandle });
+
+		InitializeWorkspacesTransform sut = new();
+
+		// When the transform is dispatched
+		var (result, _) = AssertRaises(ctx, rootSector, sut);
+
+		// Then the "Code" workspace is not shown on a monitor, so its window is hidden again, but
+		// stays tracked in the "Code" workspace
+		Assert.True(result.IsSuccessful);
+
+		Workspace codeWorkspace = rootSector.WorkspaceSector.Workspaces.Values.First(w =>
+			w.Name == CodeWorkspaceName
+		);
+		Assert.False(rootSector.MapSector.MonitorWorkspaceMap.ContainsValue(codeWorkspace.Id));
+
+		ctx.NativeManager.Received().HideWindow(VscodeHandle);
+		ctx.NativeManager.DidNotReceive().HideWindow(BrowserHandle);
+
+		Assert.Equal(codeWorkspace.Id, rootSector.MapSector.WindowWorkspaceMap[VscodeHandle]);
+		Assert.Equal(WindowSize.Minimized, codeWorkspace.WindowPositions[VscodeHandle].WindowSize);
+	}
 }
