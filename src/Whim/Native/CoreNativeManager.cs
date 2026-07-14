@@ -59,6 +59,8 @@ internal class CoreNativeManager(IContext context) : ICoreNativeManager
 
 	public HWND GetForegroundWindow() => PInvoke.GetForegroundWindow();
 
+	public bool IsWindowVisible(HWND hwnd) => PInvoke.IsWindowVisible(hwnd);
+
 	public BOOL IsWindowMinimized(HWND hWnd) => PInvoke.IsIconic(hWnd);
 
 	public BOOL IsWindowMaximized(HWND hWnd) => PInvoke.IsZoomed(hWnd);

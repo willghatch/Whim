@@ -10,7 +10,9 @@ internal record InitializeWorkspacesTransform : Transform
 	internal override Result<Unit> Execute(IContext ctx, IInternalContext internalCtx, MutableRootSector rootSector)
 	{
 		CreatePreInitializationWorkspaces(ctx, rootSector);
+		ShowHiddenSavedWindows(ctx, internalCtx);
 		PopulatedSavedWorkspaces(ctx, internalCtx, rootSector);
+		DeactivateWorkspacesWithoutMonitors(ctx, rootSector);
 
 		return Unit.Result;
 	}
@@ -33,6 +35,47 @@ internal record InitializeWorkspacesTransform : Transform
 		}
 
 		workspaceSector.WorkspacesToCreate = workspaceSector.WorkspacesToCreate.Clear();
+	}
+
+	/// <summary>
+	/// Show the windows in the saved state which are hidden.
+	///
+	/// Whim hides the windows of a workspace which is not shown on a monitor. If a previous Whim
+	/// instance did not show them again - because it crashed, or because the saved workspace's name
+	/// no longer matches a configured workspace - then they are still hidden, which makes them
+	/// invisible to the user, and to <see cref="ICoreNativeManager.IsStandardWindow"/>, and thus to
+	/// <see cref="WindowAddedTransform"/>. Showing them here means they can be added to a workspace
+	/// instead of being lost.
+	///
+	/// Only the windows which Whim itself hid are shown - applications which close to the tray keep
+	/// hidden windows around, and must be left alone.
+	/// </summary>
+	/// <param name="ctx"></param>
+	/// <param name="internalCtx"></param>
+	private static void ShowHiddenSavedWindows(IContext ctx, IInternalContext internalCtx)
+	{
+		foreach (SavedWorkspace savedWorkspace in internalCtx.CoreSavedStateManager.SavedState?.Workspaces ?? [])
+		{
+			foreach (SavedWindow savedWindow in savedWorkspace.Windows)
+			{
+				HWND hwnd = (HWND)savedWindow.Handle;
+
+				if (!internalCtx.CoreNativeManager.IsWindow(hwnd))
+				{
+					continue;
+				}
+
+				if (internalCtx.CoreNativeManager.IsWindowVisible(hwnd))
+				{
+					continue;
+				}
+
+				Logger.Information(
+					$"Showing hidden window {savedWindow.Handle} from the saved workspace {savedWorkspace.Name}"
+				);
+				ctx.NativeManager.ShowWindowNoActivate(hwnd);
+			}
+		}
 	}
 
 	/// <summary>
@@ -158,6 +201,32 @@ internal record InitializeWorkspacesTransform : Transform
 		{
 			ctx.Store.Dispatch(new AddWorkspaceTransform($"Workspace {workspaceSector.Workspaces.Count + 1}"));
 			ctx.Store.Dispatch(new ActivateWorkspaceTransform(workspaceSector.WorkspaceOrder[^1], monitor));
+		}
+	}
+
+	/// <summary>
+	/// Hide the windows of the workspaces which are not shown on a monitor.
+	///
+	/// The windows shown by <see cref="ShowHiddenSavedWindows"/> which end up in a workspace which
+	/// is not shown on a monitor would otherwise float on top of the shown workspaces, unmanaged.
+	/// Deactivating the workspace hides them, while keeping them tracked, so they can be reached by
+	/// switching to the workspace.
+	/// </summary>
+	/// <param name="ctx"></param>
+	/// <param name="rootSector"></param>
+	private static void DeactivateWorkspacesWithoutMonitors(IContext ctx, MutableRootSector rootSector)
+	{
+		ImmutableHashSet<WorkspaceId> shownWorkspaceIds = [.. rootSector.MapSector.MonitorWorkspaceMap.Values];
+
+		// Snapshot the workspaces, as deactivating a workspace updates the store.
+		foreach (WorkspaceId workspaceId in rootSector.WorkspaceSector.Workspaces.Keys.ToArray())
+		{
+			if (shownWorkspaceIds.Contains(workspaceId))
+			{
+				continue;
+			}
+
+			ctx.Store.Dispatch(new DeactivateWorkspaceTransform(workspaceId));
 		}
 	}
 }

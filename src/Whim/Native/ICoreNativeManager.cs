@@ -147,6 +147,18 @@ internal interface ICoreNativeManager
 	HWND GetForegroundWindow();
 
 	/// <summary>
+	/// Determines the visibility state of the specified window.
+	/// </summary>
+	/// <remarks>
+	/// This uses <see cref="PInvoke.IsWindowVisible(HWND)"/> <br/>
+	///
+	/// For more, see https://docs.microsoft.com/windows/win32/api/winuser/nf-winuser-iswindowvisible
+	/// </remarks>
+	/// <param name="hwnd"></param>
+	/// <returns></returns>
+	bool IsWindowVisible(HWND hwnd);
+
+	/// <summary>
 	/// Determines whether the specified window is minimized (iconic).
 	/// </summary>
 	/// <remarks>
