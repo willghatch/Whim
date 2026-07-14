@@ -127,6 +127,8 @@ internal class Context : IContext
 
 		Exiting?.Invoke(this, args);
 
+		ConsolidateWorkspaces();
+
 		PluginManager.Dispose();
 		NotificationManager.Dispose();
 		Store.Dispose();
@@ -136,5 +138,21 @@ internal class Context : IContext
 
 		Logger.Dispose();
 		Exited?.Invoke(this, args);
+	}
+
+	/// <summary>
+	/// Brings the windows of the hidden workspaces back onto the monitors, so they are not lost to
+	/// the user once Whim is no longer running. Failures must not stop Whim from exiting.
+	/// </summary>
+	private void ConsolidateWorkspaces()
+	{
+		try
+		{
+			Store.Dispatch(new ConsolidateWorkspacesTransform());
+		}
+		catch (Exception ex)
+		{
+			Logger.Error($"Failed to consolidate workspaces while exiting: {ex}");
+		}
 	}
 }
