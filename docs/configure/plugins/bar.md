@@ -31,6 +31,7 @@ plugins:
 | ------------------- | ------------------------------------------------------------------------------- |
 | `is_enabled`        | Whether the plugin is enabled                                                   |
 | `height`            | The height of the bar in pixels.                                                |
+| `font_size`         | The font size of the bar's text, in points.                                     |
 | `backdrop`          | The backdrop to use for the bar - see [Backdrops](../core/styling.md#backdrops) |
 | `left_components`   | The widgets to display on the left side of the bar.                             |
 | `center_components` | The widgets to display in the center of the bar.                                |

@@ -13,6 +13,9 @@ The bar can be styled using XAML - see [Styling](../core/styling.md).
 > [!NOTE]
 > The height of the bar can be configured the XAML styling. However, [BarConfig.Height](xref:Whim.Bar.BarConfig.Height) takes precedence over the height specified in the XAML.
 
+> [!NOTE]
+> [BarConfig.FontSize](xref:Whim.Bar.BarConfig.FontSize) sets the font size of the bar's text. It is applied to each widget, so individual widget styles in the XAML can still override it.
+
 ## Available Widgets
 
 When creating a component, use the `CreateComponent` method on the widget class. For example:

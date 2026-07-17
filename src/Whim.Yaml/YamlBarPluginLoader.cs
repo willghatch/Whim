@@ -44,6 +44,11 @@ internal static class YamlBarPluginLoader
 			config.Height = (int)height;
 		}
 
+		if (bar.FontSize is { } fontSize)
+		{
+			config.FontSize = (double)fontSize;
+		}
+
 		if (bar.Backdrop is { } backdrop)
 		{
 			config.Backdrop = YamlLoaderUtils.ParseWindowBackdropConfig(backdrop);

@@ -89,6 +89,23 @@ public class BarConfig(
 		}
 	}
 
+	private double _fontSize = 14;
+
+	/// <summary>
+	/// The font size of the bar's text, in points. Applied to the bar's widgets so that a single
+	/// setting controls the size of all bar text. Individual widget styles in the ResourceDictionary
+	/// can still override this.
+	/// </summary>
+	public double FontSize
+	{
+		get => _fontSize;
+		set
+		{
+			_fontSize = value;
+			OnPropertyChanged(nameof(FontSize));
+		}
+	}
+
 	/// <summary>
 	/// Handler to call when a property changes.
 	/// </summary>

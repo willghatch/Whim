@@ -472,6 +472,11 @@
           "description": "The height of the bar in pixels",
           "default": 30
         },
+        "font_size": {
+          "type": "number",
+          "description": "The font size of the bar's text, in points",
+          "default": 14
+        },
         "backdrop": {
           "$ref": "#/$defs/WindowBackdropConfig",
           "description": "The backdrop to use for the bar"

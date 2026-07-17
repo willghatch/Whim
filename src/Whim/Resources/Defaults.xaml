@@ -16,20 +16,24 @@
 	<Color x:Key="bar:active_workspace:foreground">#1c1c1c</Color>
 	<Color x:Key="bar:hover:background">#15777777</Color>
 	<Color x:Key="bar:hover:foreground">#da777777</Color>
-	<!--  Shared text block style  -->
+	<!--
+		Shared text block style. FontSize is intentionally not set here so that bar text inherits
+		the size configured via BarConfig.FontSize (applied to each widget in BarWindow).
+	-->
 	<Style x:Key="_base:text_block" TargetType="TextBlock">
 		<Setter Property="Margin" Value="0" />
 		<Setter Property="Padding" Value="8,2,8,3" />
-		<Setter Property="FontSize" Value="14" />
 		<Setter Property="FontFamily" Value="{StaticResource _font:family}" />
 	</Style>
-	<!--  Shared button style  -->
+	<!--
+		Shared button style. FontSize is intentionally not set here so that bar buttons inherit the
+		size configured via BarConfig.FontSize (applied to each widget in BarWindow).
+	-->
 	<Style x:Key="_base:button" TargetType="Button">
 		<Setter Property="Margin" Value="3,0" />
 		<Setter Property="Padding" Value="8,2,8,3" />
 		<Setter Property="BorderThickness" Value="0" />
 		<Setter Property="CornerRadius" Value="4" />
-		<Setter Property="FontSize" Value="14" />
 		<Setter Property="FontFamily" Value="{StaticResource _font:family}" />
 	</Style>
 	<!--  Shared font icon style  -->
@@ -63,10 +67,8 @@
 	</Style>
 	<!--  Focused window widget  -->
 	<StaticResource x:Key="bar:focused_window:text_block" ResourceKey="_base:text_block" />
-	<!--  Date time widget  -->
-	<Style x:Key="bar:date_time:text_block" BasedOn="{StaticResource _base:text_block}" TargetType="TextBlock">
-		<Setter Property="FontSize" Value="13" />
-	</Style>
+	<!--  Date time widget. Inherits the configured bar font size from _base:text_block.  -->
+	<StaticResource x:Key="bar:date_time:text_block" ResourceKey="_base:text_block" />
 	<!--  Battery widget  -->
 	<Style x:Key="bar:battery:stack_panel" BasedOn="{StaticResource _widget_stack_panel}" TargetType="StackPanel">
 		<Setter Property="Margin" Value="3,0" />
@@ -77,7 +79,6 @@
 		<Setter Property="FontSize" Value="16" />
 	</Style>
 	<Style x:Key="bar:battery:text_block" BasedOn="{StaticResource _base:text_block}" TargetType="TextBlock">
-		<Setter Property="FontSize" Value="13" />
 		<Setter Property="Margin" Value="0" />
 		<Setter Property="Padding" Value="0" />
 	</Style>

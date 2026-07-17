@@ -50,11 +50,21 @@ public sealed partial class BarWindow : Microsoft.UI.Xaml.Window, System.IDispos
 		_backdropController = new(this, barConfig.Backdrop);
 
 		// Set up the bar.
-		LeftPanel.Children.AddRange(_barConfig.LeftComponents.Select(c => c.CreateWidget(_context, _monitor, this)));
-		CenterPanel.Children.AddRange(
-			_barConfig.CenterComponents.Select(c => c.CreateWidget(_context, _monitor, this))
-		);
-		RightPanel.Children.AddRange(_barConfig.RightComponents.Select(c => c.CreateWidget(_context, _monitor, this)));
+		LeftPanel.Children.AddRange(_barConfig.LeftComponents.Select(CreateWidget));
+		CenterPanel.Children.AddRange(_barConfig.CenterComponents.Select(CreateWidget));
+		RightPanel.Children.AddRange(_barConfig.RightComponents.Select(CreateWidget));
+	}
+
+	/// <summary>
+	/// Creates a widget for the given component, applying the bar's configured font size so that a
+	/// single setting controls the size of all bar text. Widgets inherit the font size unless their
+	/// own style sets it explicitly.
+	/// </summary>
+	private Microsoft.UI.Xaml.Controls.UserControl CreateWidget(BarComponent component)
+	{
+		Microsoft.UI.Xaml.Controls.UserControl widget = component.CreateWidget(_context, _monitor, this);
+		widget.FontSize = _barConfig.FontSize;
+		return widget;
 	}
 
 	internal void UpdateRect()
