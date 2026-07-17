@@ -346,6 +346,38 @@ public class YamlLoader_LoadKeybindsTests
 			},
 			{
 				"""
+					keybinds:
+					  suppress_bare_win_key: up-control
+					""",
+				true,
+				WinKeySuppressionMode.UpControl
+			},
+			{
+				"""
+					keybinds:
+					  suppress_bare_win_key: down-e8
+					""",
+				true,
+				WinKeySuppressionMode.DownE8
+			},
+			{
+				"""
+					keybinds:
+					  suppress_bare_win_key: up-e8
+					""",
+				true,
+				WinKeySuppressionMode.UpE8
+			},
+			{
+				"""
+					keybinds:
+					  suppress_bare_win_key: eat-bound
+					""",
+				true,
+				WinKeySuppressionMode.EatBound
+			},
+			{
+				"""
 					{
 					    "keybinds": {
 					        "suppress_bare_win_key": "eat-bound-and-bare-tap"

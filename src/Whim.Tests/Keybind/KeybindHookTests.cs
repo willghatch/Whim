@@ -133,11 +133,11 @@ public class KeybindHookTests
 		internalCtx.CoreNativeManager.Received(1).CallNextHookEx(0, PInvoke.WM_KEYDOWN, 0);
 	}
 
-	// WM_KEYDOWN and WM_SYSKEYDOWN
+	// Values other than WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, and WM_SYSKEYUP
 	[InlineAutoSubstituteData<KeybindHookCustomization>(0x0099)]
-	[InlineAutoSubstituteData<KeybindHookCustomization>(0x0101)]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(0x0102)]
 	[InlineAutoSubstituteData<KeybindHookCustomization>(0x0103)]
-	[InlineAutoSubstituteData<KeybindHookCustomization>(0x0105)]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(0x0106)]
 	[Theory]
 	internal void LowLevelKeyboardProc_ValidNCodeButInvalidWParam(
 		uint wParam,
