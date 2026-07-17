@@ -62,7 +62,40 @@ internal class KeybindManager(IContext context) : IKeybindManager
 		value.Add(commandId);
 		_commandsKeybindsMap[commandId] = keybind;
 		_modifiers.UnionWith(keybind.Mods);
+
+		if (UnifyKeyModifiers)
+		{
+			// Unified keybinds are stored using their left-hand modifiers. The low-level keyboard
+			// hook checks these modifiers against the physically pressed keys, so it must also watch
+			// the right-hand variants - otherwise pressing e.g. the right Win key would not register
+			// as the unified modifier and the keybind would not fire.
+			foreach (VIRTUAL_KEY mod in keybind.Mods)
+			{
+				if (GetSiblingModifier(mod) is VIRTUAL_KEY sibling)
+				{
+					_modifiers.Add(sibling);
+				}
+			}
+		}
 	}
+
+	/// <summary>
+	/// Returns the left/right counterpart of a modifier key, or <see langword="null"/> if the key
+	/// is not a paired left/right modifier.
+	/// </summary>
+	private static VIRTUAL_KEY? GetSiblingModifier(VIRTUAL_KEY key) =>
+		key switch
+		{
+			VIRTUAL_KEY.VK_LWIN => VIRTUAL_KEY.VK_RWIN,
+			VIRTUAL_KEY.VK_RWIN => VIRTUAL_KEY.VK_LWIN,
+			VIRTUAL_KEY.VK_LCONTROL => VIRTUAL_KEY.VK_RCONTROL,
+			VIRTUAL_KEY.VK_RCONTROL => VIRTUAL_KEY.VK_LCONTROL,
+			VIRTUAL_KEY.VK_LSHIFT => VIRTUAL_KEY.VK_RSHIFT,
+			VIRTUAL_KEY.VK_RSHIFT => VIRTUAL_KEY.VK_LSHIFT,
+			VIRTUAL_KEY.VK_LMENU => VIRTUAL_KEY.VK_RMENU,
+			VIRTUAL_KEY.VK_RMENU => VIRTUAL_KEY.VK_LMENU,
+			_ => null,
+		};
 
 	public ICommand[] GetCommands(IKeybind keybind)
 	{
