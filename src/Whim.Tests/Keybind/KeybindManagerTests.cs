@@ -316,6 +316,39 @@ public class KeybindManagerTests
 	}
 
 	[Theory, AutoSubstituteData]
+	public void Modifiers_UnifyKeyModifiers_WatchesBothVariants(IContext context, ICommand command)
+	{
+		// Given a unified keybind using left-hand modifiers
+		KeybindManager keybindManager = new(context) { UnifyKeyModifiers = true };
+		context.CommandManager.TryGetCommand("command").Returns(command);
+
+		// When it is registered
+		keybindManager.SetKeybind("command", new Keybind(KeyModifiers.LWin | KeyModifiers.LControl, VIRTUAL_KEY.VK_A));
+
+		// Then both the left and right variants are watched, so the low-level hook detects the right
+		// Win/Control keys being pressed as the unified modifier
+		Assert.Contains(VIRTUAL_KEY.VK_LWIN, keybindManager.Modifiers);
+		Assert.Contains(VIRTUAL_KEY.VK_RWIN, keybindManager.Modifiers);
+		Assert.Contains(VIRTUAL_KEY.VK_LCONTROL, keybindManager.Modifiers);
+		Assert.Contains(VIRTUAL_KEY.VK_RCONTROL, keybindManager.Modifiers);
+	}
+
+	[Theory, AutoSubstituteData]
+	public void Modifiers_NotUnified_WatchesOnlyBoundVariant(IContext context, ICommand command)
+	{
+		// Given the modifiers are not unified
+		KeybindManager keybindManager = new(context) { UnifyKeyModifiers = false };
+		context.CommandManager.TryGetCommand("command").Returns(command);
+
+		// When a left-Win keybind is registered
+		keybindManager.SetKeybind("command", new Keybind(KeyModifiers.LWin, VIRTUAL_KEY.VK_A));
+
+		// Then only the bound (left) variant is watched, since the user is distinguishing the keys
+		Assert.Contains(VIRTUAL_KEY.VK_LWIN, keybindManager.Modifiers);
+		Assert.DoesNotContain(VIRTUAL_KEY.VK_RWIN, keybindManager.Modifiers);
+	}
+
+	[Theory, AutoSubstituteData]
 	public void Clear_CommandsCleared(IContext context)
 	{
 		// Given
