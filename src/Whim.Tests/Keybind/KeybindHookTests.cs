@@ -218,7 +218,7 @@ public class KeybindHookTests
 	}
 
 	[Theory, AutoSubstituteData<KeybindHookCustomization>]
-	internal void LowLevelKeyboardProc_WinKeySuppressBareWinKeyOff_PassesThroughWithoutDummyInput(
+	internal void LowLevelKeyboardProc_WinKeySuppressionOff_PassesThroughWithoutDummyInput(
 		IContext ctx,
 		IInternalContext internalCtx
 	)
@@ -227,7 +227,7 @@ public class KeybindHookTests
 		CaptureKeybindHook capture = CaptureKeybindHook.Create(internalCtx);
 		KeybindHook keybindHook = new(ctx, internalCtx);
 
-		ctx.KeybindManager.SuppressBareWinKey.Returns(false);
+		ctx.KeybindManager.SuppressBareWinKey.Returns(WinKeySuppressionMode.None);
 		ctx.KeybindManager.Modifiers.Returns([VIRTUAL_KEY.VK_LWIN]);
 		internalCtx
 			.CoreNativeManager.PtrToStructure<KBDLLHOOKSTRUCT>(Arg.Any<nint>())
@@ -243,8 +243,15 @@ public class KeybindHookTests
 		Assert.Equal(0, (nint)result!);
 	}
 
-	[Theory, AutoSubstituteData<KeybindHookCustomization>]
-	internal void LowLevelKeyboardProc_WinKeySuppressBareWinKeyOn_SendsDummyInputAndPassesThrough(
+	[Theory]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(WinKeySuppressionMode.DownE8, 0x0100, 0xE8)]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(WinKeySuppressionMode.UpE8, 0x0101, 0xE8)]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(WinKeySuppressionMode.DownControl, 0x0100, 0x11)]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(WinKeySuppressionMode.UpControl, 0x0101, 0x11)]
+	internal void LowLevelKeyboardProc_InjectingMode_SendsConfiguredKeyAtConfiguredTime(
+		WinKeySuppressionMode mode,
+		uint eventMessage,
+		VIRTUAL_KEY suppressionKey,
 		IContext ctx,
 		IInternalContext internalCtx
 	)
@@ -253,7 +260,7 @@ public class KeybindHookTests
 		CaptureKeybindHook capture = CaptureKeybindHook.Create(internalCtx);
 		KeybindHook keybindHook = new(ctx, internalCtx);
 
-		ctx.KeybindManager.SuppressBareWinKey.Returns(true);
+		ctx.KeybindManager.SuppressBareWinKey.Returns(mode);
 		ctx.KeybindManager.Modifiers.Returns([VIRTUAL_KEY.VK_LWIN]);
 		internalCtx
 			.CoreNativeManager.PtrToStructure<KBDLLHOOKSTRUCT>(Arg.Any<nint>())
@@ -261,7 +268,7 @@ public class KeybindHookTests
 
 		// When
 		keybindHook.PostInitialize();
-		LRESULT? result = capture.LowLevelKeyboardProc?.Invoke(0, PInvoke.WM_KEYDOWN, 0);
+		LRESULT? result = capture.LowLevelKeyboardProc?.Invoke(0, eventMessage, 0);
 
 		// Then
 		internalCtx
@@ -270,15 +277,151 @@ public class KeybindHookTests
 				Arg.Is<INPUT[]>(inputs =>
 					inputs.Length == 2
 					&& inputs[0].type == INPUT_TYPE.INPUT_KEYBOARD
-					&& inputs[0].Anonymous.ki.wVk == (VIRTUAL_KEY)0xE8
+					&& inputs[0].Anonymous.ki.wVk == suppressionKey
 					&& inputs[1].type == INPUT_TYPE.INPUT_KEYBOARD
-					&& inputs[1].Anonymous.ki.wVk == (VIRTUAL_KEY)0xE8
+					&& inputs[1].Anonymous.ki.wVk == suppressionKey
 					&& inputs[1].Anonymous.ki.dwFlags == KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP
 				),
 				Arg.Any<int>()
 			);
-		internalCtx.CoreNativeManager.Received(1).CallNextHookEx(0, PInvoke.WM_KEYDOWN, 0);
+		internalCtx.CoreNativeManager.Received(1).CallNextHookEx(0, eventMessage, 0);
 		Assert.Equal(0, (nint)result!);
+	}
+
+	[Theory]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(WinKeySuppressionMode.DownE8, 0x0101)]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(WinKeySuppressionMode.UpE8, 0x0100)]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(WinKeySuppressionMode.DownControl, 0x0101)]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(WinKeySuppressionMode.UpControl, 0x0100)]
+	internal void LowLevelKeyboardProc_InjectingMode_DoesNotSendAtOtherTime(
+		WinKeySuppressionMode mode,
+		uint eventMessage,
+		IContext ctx,
+		IInternalContext internalCtx
+	)
+	{
+		// Given
+		CaptureKeybindHook capture = CaptureKeybindHook.Create(internalCtx);
+		KeybindHook keybindHook = new(ctx, internalCtx);
+		ctx.KeybindManager.SuppressBareWinKey.Returns(mode);
+		ctx.KeybindManager.Modifiers.Returns([VIRTUAL_KEY.VK_LWIN]);
+		internalCtx
+			.CoreNativeManager.PtrToStructure<KBDLLHOOKSTRUCT>(Arg.Any<nint>())
+			.Returns(new KBDLLHOOKSTRUCT { vkCode = (uint)VIRTUAL_KEY.VK_LWIN });
+
+		// When
+		keybindHook.PostInitialize();
+		capture.LowLevelKeyboardProc?.Invoke(0, eventMessage, 0);
+
+		// Then
+		internalCtx.CoreNativeManager.DidNotReceive().SendInput(Arg.Any<INPUT[]>(), Arg.Any<int>());
+	}
+
+	[Theory, AutoSubstituteData<KeybindHookCustomization>]
+	internal void LowLevelKeyboardProc_EatBound_EatsWinAndBoundKey(
+		IContext ctx,
+		IInternalContext internalCtx,
+		ICommand command
+	)
+	{
+		// Given
+		CaptureKeybindHook capture = CaptureKeybindHook.Create(internalCtx);
+		KeybindHook keybindHook = new(ctx, internalCtx);
+		ctx.KeybindManager.SuppressBareWinKey.Returns(WinKeySuppressionMode.EatBound);
+		ctx.KeybindManager.Modifiers.Returns([VIRTUAL_KEY.VK_LWIN]);
+		internalCtx
+			.CoreNativeManager.PtrToStructure<KBDLLHOOKSTRUCT>(Arg.Any<nint>())
+			.Returns(
+				new KBDLLHOOKSTRUCT { vkCode = (uint)VIRTUAL_KEY.VK_LWIN },
+				new KBDLLHOOKSTRUCT { vkCode = (uint)VIRTUAL_KEY.VK_A },
+				new KBDLLHOOKSTRUCT { vkCode = (uint)VIRTUAL_KEY.VK_LWIN }
+			);
+		ctx.KeybindManager.GetCommands(new Keybind([VIRTUAL_KEY.VK_LWIN], VIRTUAL_KEY.VK_A)).Returns([command]);
+
+		// When
+		keybindHook.PostInitialize();
+		LRESULT? winDown = capture.LowLevelKeyboardProc?.Invoke(0, PInvoke.WM_KEYDOWN, 0);
+		LRESULT? keyDown = capture.LowLevelKeyboardProc?.Invoke(0, PInvoke.WM_KEYDOWN, 0);
+		LRESULT? winUp = capture.LowLevelKeyboardProc?.Invoke(0, PInvoke.WM_KEYUP, 0);
+
+		// Then
+		Assert.Equal(1, (nint)winDown!);
+		Assert.Equal(1, (nint)keyDown!);
+		Assert.Equal(1, (nint)winUp!);
+		command.Received(1).TryExecute();
+		internalCtx.CoreNativeManager.DidNotReceive().SendInput(Arg.Any<INPUT[]>(), Arg.Any<int>());
+	}
+
+	[Theory, AutoSubstituteData<KeybindHookCustomization>]
+	internal void LowLevelKeyboardProc_EatBound_ReplaysWinDownForUnboundKey(
+		IContext ctx,
+		IInternalContext internalCtx
+	)
+	{
+		// Given
+		CaptureKeybindHook capture = CaptureKeybindHook.Create(internalCtx);
+		KeybindHook keybindHook = new(ctx, internalCtx);
+		ctx.KeybindManager.SuppressBareWinKey.Returns(WinKeySuppressionMode.EatBound);
+		ctx.KeybindManager.Modifiers.Returns([VIRTUAL_KEY.VK_LWIN]);
+		internalCtx
+			.CoreNativeManager.PtrToStructure<KBDLLHOOKSTRUCT>(Arg.Any<nint>())
+			.Returns(
+				new KBDLLHOOKSTRUCT { vkCode = (uint)VIRTUAL_KEY.VK_LWIN },
+				new KBDLLHOOKSTRUCT { vkCode = (uint)VIRTUAL_KEY.VK_R },
+				new KBDLLHOOKSTRUCT { vkCode = (uint)VIRTUAL_KEY.VK_LWIN }
+			);
+		ctx.KeybindManager.GetCommands(Arg.Any<IKeybind>()).Returns([]);
+
+		// When
+		keybindHook.PostInitialize();
+		LRESULT? winDown = capture.LowLevelKeyboardProc?.Invoke(0, PInvoke.WM_KEYDOWN, 0);
+		LRESULT? keyDown = capture.LowLevelKeyboardProc?.Invoke(0, PInvoke.WM_KEYDOWN, 0);
+		LRESULT? winUp = capture.LowLevelKeyboardProc?.Invoke(0, PInvoke.WM_KEYUP, 0);
+
+		// Then
+		Assert.Equal(1, (nint)winDown!);
+		Assert.Equal(0, (nint)keyDown!);
+		Assert.Equal(0, (nint)winUp!);
+		internalCtx
+			.CoreNativeManager.Received(1)
+			.SendInput(
+				Arg.Is<INPUT[]>(inputs =>
+					inputs.Length == 1
+					&& inputs[0].Anonymous.ki.wVk == VIRTUAL_KEY.VK_LWIN
+					&& inputs[0].Anonymous.ki.dwFlags == default
+				),
+				Arg.Any<int>()
+			);
+	}
+
+	[Theory]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(WinKeySuppressionMode.EatBound, 1)]
+	[InlineAutoSubstituteData<KeybindHookCustomization>(WinKeySuppressionMode.EatBoundAndBareTap, 0)]
+	internal void LowLevelKeyboardProc_EatingMode_HandlesBareTap(
+		WinKeySuppressionMode mode,
+		int expectedInputs,
+		IContext ctx,
+		IInternalContext internalCtx
+	)
+	{
+		// Given
+		CaptureKeybindHook capture = CaptureKeybindHook.Create(internalCtx);
+		KeybindHook keybindHook = new(ctx, internalCtx);
+		ctx.KeybindManager.SuppressBareWinKey.Returns(mode);
+		ctx.KeybindManager.Modifiers.Returns([VIRTUAL_KEY.VK_LWIN]);
+		internalCtx
+			.CoreNativeManager.PtrToStructure<KBDLLHOOKSTRUCT>(Arg.Any<nint>())
+			.Returns(new KBDLLHOOKSTRUCT { vkCode = (uint)VIRTUAL_KEY.VK_LWIN });
+
+		// When
+		keybindHook.PostInitialize();
+		LRESULT? winDown = capture.LowLevelKeyboardProc?.Invoke(0, PInvoke.WM_KEYDOWN, 0);
+		LRESULT? winUp = capture.LowLevelKeyboardProc?.Invoke(0, PInvoke.WM_KEYUP, 0);
+
+		// Then
+		Assert.Equal(1, (nint)winDown!);
+		Assert.Equal(1, (nint)winUp!);
+		internalCtx.CoreNativeManager.Received(expectedInputs).SendInput(Arg.Any<INPUT[]>(), Arg.Any<int>());
 	}
 
 	public static readonly TheoryData<VIRTUAL_KEY[], VIRTUAL_KEY, Keybind> KeybindsToExecute = new()

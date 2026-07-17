@@ -295,7 +295,7 @@ public class YamlLoader_LoadKeybindsTests
 		ctx.KeybindManager.Received().UnifyKeyModifiers = config.Contains("true");
 	}
 
-	public static TheoryData<string, bool> SuppressBareWinKeyConfig =>
+	public static TheoryData<string, bool, WinKeySuppressionMode> SuppressBareWinKeyConfig =>
 		new()
 		{
 			{
@@ -303,14 +303,16 @@ public class YamlLoader_LoadKeybindsTests
 					keybinds:
 					  suppress_bare_win_key: true
 					""",
-				true
+				true,
+				WinKeySuppressionMode.DownE8
 			},
 			{
 				"""
 					keybinds:
 					  suppress_bare_win_key: false
 					""",
-				true
+				true,
+				WinKeySuppressionMode.None
 			},
 			{
 				"""
@@ -320,7 +322,8 @@ public class YamlLoader_LoadKeybindsTests
 					    }
 					}
 					""",
-				false
+				false,
+				WinKeySuppressionMode.DownE8
 			},
 			{
 				"""
@@ -330,12 +333,37 @@ public class YamlLoader_LoadKeybindsTests
 					    }
 					}
 					""",
-				false
+				false,
+				WinKeySuppressionMode.None
+			},
+			{
+				"""
+					keybinds:
+					  suppress_bare_win_key: down-control
+					""",
+				true,
+				WinKeySuppressionMode.DownControl
+			},
+			{
+				"""
+					{
+					    "keybinds": {
+					        "suppress_bare_win_key": "eat-bound-and-bare-tap"
+					    }
+					}
+					""",
+				false,
+				WinKeySuppressionMode.EatBoundAndBareTap
 			},
 		};
 
 	[Theory, MemberAutoSubstituteData<YamlLoaderCustomization>(nameof(SuppressBareWinKeyConfig))]
-	public void Load_SuppressBareWinKey(string config, bool isYaml, IContext ctx)
+	public void Load_SuppressBareWinKey(
+		string config,
+		bool isYaml,
+		WinKeySuppressionMode expected,
+		IContext ctx
+	)
 	{
 		// Given a valid config with suppressBareWinKey set
 		YamlLoaderTestUtils.SetupFileConfig(ctx, config, isYaml);
@@ -345,7 +373,7 @@ public class YamlLoader_LoadKeybindsTests
 
 		// Then the result is true, and suppressBareWinKey is set
 		Assert.True(result);
-		ctx.KeybindManager.Received().SuppressBareWinKey = config.Contains("true");
+		ctx.KeybindManager.Received().SuppressBareWinKey = expected;
 	}
 
 	public static TheoryData<string, bool> CenterCursorOnMonitorSwitchConfig =>
