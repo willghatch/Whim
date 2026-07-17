@@ -4,8 +4,9 @@ namespace Whim;
 /// Focus the last focused window in the workspace with given <paramref name="WorkspaceId"/>.
 ///
 /// NOTE: This does not update the workspace's <see cref="Workspace.LastFocusedWindowHandle"/>.
-/// Instead, it queues a call to <see cref="IWindow.Focus"/>. If there is no last focused window, the monitor's
-/// desktop will be focused.
+/// Instead, it queues a call to <see cref="IWindow.Focus"/>. If there is no last focused window but
+/// the workspace has windows, the first window is focused. If the workspace has no windows, the
+/// monitor's desktop will be focused.
 /// </summary>
 /// <param name="WorkspaceId"></param>
 public record FocusWorkspaceTransform(WorkspaceId WorkspaceId) : BaseWorkspaceTransform(WorkspaceId)
@@ -20,6 +21,18 @@ public record FocusWorkspaceTransform(WorkspaceId WorkspaceId) : BaseWorkspaceTr
 		if (workspace.LastFocusedWindowHandle != default)
 		{
 			rootSector.WorkspaceSector.WindowHandleToFocus = workspace.LastFocusedWindowHandle;
+			return workspace;
+		}
+
+		// There is no recorded last-focused window (e.g. the workspace was never interacted with).
+		// Focus the first window in the workspace if there is one, so switching to it still gives a
+		// window keyboard focus rather than dropping focus to the desktop.
+		if (
+			ctx.Store.Pick(PickWorkspaceWindowsInOrder(workspace.Id)).TryGet(out IReadOnlyList<IWindow> windows)
+			&& windows.Count > 0
+		)
+		{
+			rootSector.WorkspaceSector.WindowHandleToFocus = windows[0].Handle;
 			return workspace;
 		}
 
