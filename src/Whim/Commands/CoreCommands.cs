@@ -329,6 +329,11 @@ internal class CoreCommands : PluginCommands
 				callback: () => _context.Store.Dispatch(new CreateWorkspaceOnMonitorTransform())
 			)
 			.Add(
+				identifier: "move_window_to_new_workspace_on_current_monitor",
+				title: "Move the focused window to a new workspace on the current monitor",
+				callback: MoveWindowToNewWorkspaceOnCurrentMonitor
+			)
+			.Add(
 				identifier: "swap_workspace_order_next",
 				title: "Swap the current workspace's order with the next workspace",
 				callback: () => _context.Store.Dispatch(new SwapWorkspaceOrderTransform(Reverse: false))
@@ -468,6 +473,25 @@ internal class CoreCommands : PluginCommands
 			// Move the window to the next/previous workspace
 			_context.Store.Dispatch(new MoveWindowToWorkspaceTransform(workspaces[nextIndex].Id, window.Handle));
 		};
+
+	/// <summary>
+	/// Creates a new workspace pinned to the current monitor and moves the focused window to it.
+	/// Does nothing if there is no focused window, so it never leaves an empty workspace behind.
+	/// </summary>
+	internal void MoveWindowToNewWorkspaceOnCurrentMonitor()
+	{
+		if (!_context.Store.Pick(PickLastFocusedWindow()).TryGet(out IWindow window))
+		{
+			return;
+		}
+
+		if (!_context.Store.Dispatch(new CreateWorkspaceOnMonitorTransform()).TryGet(out WorkspaceId workspaceId))
+		{
+			return;
+		}
+
+		_context.Store.Dispatch(new MoveWindowToWorkspaceTransform(workspaceId, window.Handle));
+	}
 
 	internal void PinWorkspaceToCurrentMonitor()
 	{
