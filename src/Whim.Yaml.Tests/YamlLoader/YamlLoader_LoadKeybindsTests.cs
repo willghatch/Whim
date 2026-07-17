@@ -347,4 +347,57 @@ public class YamlLoader_LoadKeybindsTests
 		Assert.True(result);
 		ctx.KeybindManager.Received().SuppressBareWinKey = config.Contains("true");
 	}
+
+	public static TheoryData<string, bool> CenterCursorOnMonitorSwitchConfig =>
+		new()
+		{
+			{
+				"""
+					keybinds:
+					  center_cursor_on_monitor_switch: true
+					""",
+				true
+			},
+			{
+				"""
+					keybinds:
+					  center_cursor_on_monitor_switch: false
+					""",
+				true
+			},
+			{
+				"""
+					{
+					    "keybinds": {
+					        "center_cursor_on_monitor_switch": true
+					    }
+					}
+					""",
+				false
+			},
+			{
+				"""
+					{
+					    "keybinds": {
+					        "center_cursor_on_monitor_switch": false
+					    }
+					}
+					""",
+				false
+			},
+		};
+
+	[Theory, MemberAutoSubstituteData<YamlLoaderCustomization>(nameof(CenterCursorOnMonitorSwitchConfig))]
+	public void Load_CenterCursorOnMonitorSwitch(string config, bool isYaml, IContext ctx)
+	{
+		// Given a valid config with centerCursorOnMonitorSwitch set
+		YamlLoaderTestUtils.SetupFileConfig(ctx, config, isYaml);
+
+		// When loading the config
+		bool result = YamlLoader.Load(ctx, showErrorWindow: false);
+
+		// Then the result is true, and centerCursorOnMonitorSwitch is set
+		Assert.True(result);
+		ctx.KeybindManager.Received().CenterCursorOnMonitorSwitch = config.Contains("true");
+	}
 }

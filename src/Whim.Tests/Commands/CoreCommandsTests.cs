@@ -322,6 +322,66 @@ public class CoreCommandsTests
 		Assert.Contains(transforms, t => t.Equals(new FocusWorkspaceTransform(w2.Id)));
 	}
 
+	[InlineAutoSubstituteData<StoreCustomization>("whim.core.focus_previous_monitor")]
+	[InlineAutoSubstituteData<StoreCustomization>("whim.core.focus_next_monitor")]
+	[Theory]
+	internal void FocusMonitor_CentersCursorWhenEnabled(
+		string commandName,
+		IContext ctx,
+		MutableRootSector root,
+		List<object> transforms
+	)
+	{
+		// Given the center-cursor-on-monitor-switch option is enabled
+		ctx.KeybindManager.CenterCursorOnMonitorSwitch.Returns(true);
+
+		Workspace w1 = CreateWorkspace();
+		Workspace w2 = CreateWorkspace();
+		IMonitor m1 = CreateMonitor((HMONITOR)1);
+		IMonitor m2 = CreateMonitor((HMONITOR)2);
+		PopulateMonitorWorkspaceMap(root, m1, w1);
+		PopulateMonitorWorkspaceMap(root, m2, w2);
+
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		// When switching monitors
+		testUtils.GetCommand(commandName).TryExecute();
+
+		// Then the cursor is moved to the center of the newly focused monitor's working area
+		Assert.Contains(transforms, t => t.Equals(new FocusWorkspaceTransform(w2.Id)));
+		ctx.NativeManager.Received(1).MoveCursorTo(960, 540);
+	}
+
+	[InlineAutoSubstituteData<StoreCustomization>("whim.core.focus_previous_monitor")]
+	[InlineAutoSubstituteData<StoreCustomization>("whim.core.focus_next_monitor")]
+	[Theory]
+	internal void FocusMonitor_DoesNotCenterCursorByDefault(
+		string commandName,
+		IContext ctx,
+		MutableRootSector root,
+		List<object> transforms
+	)
+	{
+		// Given the center-cursor-on-monitor-switch option is left at its default (disabled)
+		Workspace w1 = CreateWorkspace();
+		Workspace w2 = CreateWorkspace();
+		IMonitor m1 = CreateMonitor((HMONITOR)1);
+		IMonitor m2 = CreateMonitor((HMONITOR)2);
+		PopulateMonitorWorkspaceMap(root, m1, w1);
+		PopulateMonitorWorkspaceMap(root, m2, w2);
+
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		// When switching monitors
+		testUtils.GetCommand(commandName).TryExecute();
+
+		// Then the cursor is not moved
+		Assert.Contains(transforms, t => t.Equals(new FocusWorkspaceTransform(w2.Id)));
+		ctx.NativeManager.DidNotReceive().MoveCursorTo(Arg.Any<int>(), Arg.Any<int>());
+	}
+
 	[Theory, AutoSubstituteData<StoreCustomization>]
 	internal void FocusMonitor_CannotGetWorkspaceForMonitor(
 		IContext ctx,
