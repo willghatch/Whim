@@ -183,6 +183,47 @@ public class YamlLoader_LoadBarPluginTests
 		ctx.PluginManager.Received(1).AddPlugin(Arg.Is<BarPlugin>(p => p.Config.Height == 42));
 	}
 
+	public static TheoryData<string, bool> BarPluginFontSizeConfig =>
+		new()
+		{
+			// YAML
+			{
+				"""
+					plugins:
+					  bar:
+					    font_size: 20
+					""",
+				true
+			},
+			// JSON
+			{
+				"""
+					{
+						"plugins": {
+							"bar": {
+								"font_size": 20
+							}
+						}
+					}
+					""",
+				false
+			},
+		};
+
+	[Theory, MemberAutoSubstituteData<YamlLoaderCustomization>(nameof(BarPluginFontSizeConfig))]
+	public void LoadBarPlugin_ConfigHasFontSize(string schema, bool isYaml, IContext ctx)
+	{
+		// Given a valid config with the bar plugin and a font size
+		YamlLoaderTestUtils.SetupFileConfig(ctx, schema, isYaml);
+
+		// When loading the config
+		bool result = YamlLoader.Load(ctx, showErrorWindow: false);
+
+		// Then the result is true, and the bar plugin has the font size
+		Assert.True(result);
+		ctx.PluginManager.Received(1).AddPlugin(Arg.Is<BarPlugin>(p => p.Config.FontSize == 20));
+	}
+
 	public static TheoryData<string, bool> ActiveLayoutBarWidgetConfig =>
 		new()
 		{
