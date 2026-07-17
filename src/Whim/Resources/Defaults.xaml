@@ -26,11 +26,15 @@
 	<!--
 		Shared text block style. FontSize is intentionally not set here so that bar text inherits
 		the size configured via BarConfig.FontSize (applied to each widget in BarWindow).
+		FlowDirection is forced left-to-right so that text is not visually reordered when the widget
+		sits in the right-hand panel, which lays its widgets out right-to-left (e.g. a
+		"yyyy-MM-dd HH:mm" date would otherwise render with the time before the date).
 	-->
 	<Style x:Key="_base:text_block" TargetType="TextBlock">
 		<Setter Property="Margin" Value="0" />
 		<Setter Property="Padding" Value="8,2,8,3" />
 		<Setter Property="FontFamily" Value="{StaticResource _font:family}" />
+		<Setter Property="FlowDirection" Value="LeftToRight" />
 	</Style>
 	<!--
 		Shared button style. FontSize is intentionally not set here so that bar buttons inherit the
