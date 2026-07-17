@@ -64,6 +64,13 @@ public interface INativeManager
 	string GetClassName(HWND hwnd);
 
 	/// <summary>
+	/// Moves the mouse cursor to the given screen coordinates, in physical pixels.
+	/// </summary>
+	/// <param name="x">The x-coordinate to move the cursor to.</param>
+	/// <param name="y">The y-coordinate to move the cursor to.</param>
+	void MoveCursorTo(int x, int y);
+
+	/// <summary>
 	/// Hides the caption buttons from the given window.
 	/// </summary>
 	/// <param name="hwnd"></param>

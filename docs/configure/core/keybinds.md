@@ -42,6 +42,10 @@ To treat key modifiers like `LWin` and `RWin` the same, set `unify_key_modifiers
 
 To prevent Windows from opening the Start menu when the Windows key is pressed and released without another key, set `suppress_bare_win_key` to `true`.
 
+## Center Cursor on Monitor Switch
+
+To move the mouse cursor to the center of a monitor when it is focused via a keybind (for example `whim.core.focus_next_monitor`), set `center_cursor_on_monitor_switch` to `true`. Defaults to `false`.
+
 ## Keybinds Example
 
 ```yaml
@@ -70,4 +74,5 @@ keybinds:
 
   unify_key_modifiers: true
   suppress_bare_win_key: false
+  center_cursor_on_monitor_switch: false
 ```

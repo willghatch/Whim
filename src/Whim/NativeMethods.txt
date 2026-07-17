@@ -67,6 +67,7 @@ SC_CLOSE
 SendInput
 SendMessage
 SendNotifyMessage
+SetCursorPos
 SetForegroundWindow
 SetWindowLong
 SetWindowPos

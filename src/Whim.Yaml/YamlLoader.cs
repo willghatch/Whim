@@ -178,6 +178,11 @@ public static class YamlLoader
 			ctx.KeybindManager.SuppressBareWinKey = suppressBareWinKey;
 		}
 
+		if (keybinds.CenterCursorOnMonitorSwitch?.TryGetBoolean(out bool centerCursorOnMonitorSwitch) == true)
+		{
+			ctx.KeybindManager.CenterCursorOnMonitorSwitch = centerCursorOnMonitorSwitch;
+		}
+
 		if (keybinds.Entries is not { } entries)
 		{
 			Logger.Debug("No keybinds found.");

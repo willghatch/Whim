@@ -39,6 +39,12 @@ internal partial class NativeManager : INativeManager
 		PInvoke.SendNotifyMessage(hwnd, PInvoke.WM_SYSCOMMAND, new WPARAM(PInvoke.SC_CLOSE), 0);
 	}
 
+	public void MoveCursorTo(int x, int y)
+	{
+		Logger.Debug($"Moving cursor to ({x}, {y})");
+		PInvoke.SetCursorPos(x, y);
+	}
+
 	public void ForceForegroundWindow(HWND hwnd)
 	{
 		Logger.Debug($"Forcing window HWND {hwnd} to foreground");

@@ -26,6 +26,14 @@ public interface IKeybindManager
 	bool SuppressBareWinKey { get; set; }
 
 	/// <summary>
+	/// Whether focusing a different monitor via a keybind (for example the
+	/// <c>whim.core.focus_next_monitor</c> and <c>whim.core.focus_previous_monitor</c> commands)
+	/// moves the mouse cursor to the center of the newly focused monitor. Defaults to
+	/// <see langword="false"/>.
+	/// </summary>
+	bool CenterCursorOnMonitorSwitch { get; set; }
+
+	/// <summary>
 	/// All the modifiers which are currently being used.
 	/// </summary>
 	IEnumerable<VIRTUAL_KEY> Modifiers { get; }

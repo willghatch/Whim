@@ -413,6 +413,12 @@ internal class CoreCommands : PluginCommands
 			}
 
 			_context.Store.Dispatch(new FocusWorkspaceTransform(workspace.Id));
+
+			if (_context.KeybindManager.CenterCursorOnMonitorSwitch)
+			{
+				IRectangle<int> area = monitor.WorkingArea;
+				_context.NativeManager.MoveCursorTo(area.X + (area.Width / 2), area.Y + (area.Height / 2));
+			}
 		};
 
 	internal Action FocusWorkspaceOnCurrentMonitor(bool getNext) =>

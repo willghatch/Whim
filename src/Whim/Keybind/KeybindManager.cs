@@ -26,6 +26,8 @@ internal class KeybindManager(IContext context) : IKeybindManager
 
 	public bool SuppressBareWinKey { get; set; }
 
+	public bool CenterCursorOnMonitorSwitch { get; set; }
+
 	private readonly HashSet<VIRTUAL_KEY> _modifiers = [];
 	public IEnumerable<VIRTUAL_KEY> Modifiers => _modifiers;
 
