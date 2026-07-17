@@ -251,7 +251,7 @@ public class KeybindHookTests
 	internal void LowLevelKeyboardProc_InjectingMode_SendsConfiguredKeyAtConfiguredTime(
 		WinKeySuppressionMode mode,
 		uint eventMessage,
-		VIRTUAL_KEY suppressionKey,
+		uint suppressionKey,
 		IContext ctx,
 		IInternalContext internalCtx
 	)
@@ -277,9 +277,9 @@ public class KeybindHookTests
 				Arg.Is<INPUT[]>(inputs =>
 					inputs.Length == 2
 					&& inputs[0].type == INPUT_TYPE.INPUT_KEYBOARD
-					&& inputs[0].Anonymous.ki.wVk == suppressionKey
+					&& inputs[0].Anonymous.ki.wVk == (VIRTUAL_KEY)suppressionKey
 					&& inputs[1].type == INPUT_TYPE.INPUT_KEYBOARD
-					&& inputs[1].Anonymous.ki.wVk == suppressionKey
+					&& inputs[1].Anonymous.ki.wVk == (VIRTUAL_KEY)suppressionKey
 					&& inputs[1].Anonymous.ki.dwFlags == KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP
 				),
 				Arg.Any<int>()
