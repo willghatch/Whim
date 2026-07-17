@@ -29,7 +29,6 @@ public class BarPlugin(IContext context, BarConfig barConfig) : IBarPlugin
 	/// <inheritdoc />
 	public void PreInitialize()
 	{
-		_context.Store.MonitorEvents.MonitorsChanged += MonitorManager_MonitorsChanged;
 		_context.FilterManager.AddTitleMatchFilter("Whim Bar");
 		_context.Store.Dispatch(new AddProxyLayoutEngineTransform(layout => new BarLayoutEngine(Config, layout)));
 
@@ -41,11 +40,15 @@ public class BarPlugin(IContext context, BarConfig barConfig) : IBarPlugin
 	{
 		foreach (IMonitor monitor in _context.Store.Pick(Pickers.PickAllMonitors()))
 		{
-			BarWindow barWindow = new(_context, Config, monitor);
-			_monitorBarMap[monitor] = barWindow;
+			EnsureBarWindow(monitor);
 		}
 
 		ShowAll();
+
+		// Subscribe only now that the bars exist. The store fires the initial MonitorsChanged
+		// (with every monitor as "added") during Store.Initialize, which runs between PreInitialize
+		// and here; reacting to it would create a second set of bar windows and orphan this one.
+		_context.Store.MonitorEvents.MonitorsChanged += MonitorManager_MonitorsChanged;
 	}
 
 	private void MonitorManager_MonitorsChanged(object? sender, MonitorsChangedEventArgs e)
@@ -61,11 +64,24 @@ public class BarPlugin(IContext context, BarConfig barConfig) : IBarPlugin
 		// Add the new monitors
 		foreach (IMonitor monitor in e.AddedMonitors)
 		{
-			BarWindow barWindow = new(_context, Config, monitor);
-			_monitorBarMap[monitor] = barWindow;
+			EnsureBarWindow(monitor);
 		}
 
 		ShowAll();
+	}
+
+	/// <summary>
+	/// Creates a bar window for the monitor if it does not already have one. Guards against creating
+	/// duplicate bars for a monitor that is already tracked.
+	/// </summary>
+	private void EnsureBarWindow(IMonitor monitor)
+	{
+		if (_monitorBarMap.ContainsKey(monitor))
+		{
+			return;
+		}
+
+		_monitorBarMap[monitor] = new BarWindow(_context, Config, monitor);
 	}
 
 	/// <summary>
