@@ -38,6 +38,14 @@ public class BarPlugin(IContext context, BarConfig barConfig) : IBarPlugin
 	/// <inheritdoc />
 	public void PostInitialize()
 	{
+		// Publish the configured font size so that widget styles which cannot inherit the bar's
+		// FontSize (the workspace and active-layout buttons) can read it via ThemeResource. This
+		// must happen before the bar windows - and their widgets - are created.
+		if (Microsoft.UI.Xaml.Application.Current is { } application)
+		{
+			application.Resources["bar:font_size"] = Config.FontSize;
+		}
+
 		foreach (IMonitor monitor in _context.Store.Pick(Pickers.PickAllMonitors()))
 		{
 			EnsureBarWindow(monitor);

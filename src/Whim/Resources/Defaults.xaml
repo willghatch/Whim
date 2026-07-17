@@ -9,6 +9,13 @@
 	<Style x:Key="bar:height" TargetType="RelativePanel">
 		<Setter Property="Height" Value="30" />
 	</Style>
+	<!--
+		Bar font size. BarPlugin overwrites this at runtime with BarConfig.FontSize before the bar
+		windows are created, so styles which read it via ThemeResource pick up the configured size.
+		Used for widgets whose text does not inherit FontSize from the bar (e.g. the workspace and
+		active-layout buttons).
+	-->
+	<x:Double x:Key="bar:font_size">14</x:Double>
 	<!--  Font family  -->
 	<FontFamily x:Key="_font:family">Segoe UI</FontFamily>
 	<!--  Explicit colors, other colors are inherited from the system settings  -->
@@ -35,6 +42,8 @@
 		<Setter Property="BorderThickness" Value="0" />
 		<Setter Property="CornerRadius" Value="4" />
 		<Setter Property="FontFamily" Value="{StaticResource _font:family}" />
+		<!--  Buttons do not inherit the bar's FontSize across the ItemsControl/DropDown boundary, so set it explicitly.  -->
+		<Setter Property="FontSize" Value="{ThemeResource bar:font_size}" />
 	</Style>
 	<!--  Shared font icon style  -->
 	<Style x:Key="_base:font_icon" TargetType="FontIcon">
