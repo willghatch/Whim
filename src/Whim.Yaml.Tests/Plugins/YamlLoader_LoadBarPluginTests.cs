@@ -364,6 +364,22 @@ public class YamlLoader_LoadBarPluginTests
 				500,
 				"yyyy-MM-dd"
 			},
+			// YAML, unquoted format (regression: an unquoted, date-first format must be passed
+			// through verbatim, not reordered to time-first). Mirrors a real config that used
+			// `format: yyyy-MM-dd HH:mm` without quotes.
+			{
+				"""
+					plugins:
+					  bar:
+					    left_components:
+					      entries:
+					        - type: date_time_widget
+					          format: yyyy-MM-dd HH:mm
+					""",
+				true,
+				1000,
+				"yyyy-MM-dd HH:mm"
+			},
 		};
 
 	[Theory, MemberAutoSubstituteData<YamlLoaderCustomization>(nameof(DateAndTimeBarWidgetConfig))]
