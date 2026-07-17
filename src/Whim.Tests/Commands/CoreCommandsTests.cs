@@ -461,6 +461,67 @@ public class CoreCommandsTests
 	}
 
 	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void MoveWindowToNewWorkspaceOnCurrentMonitor(
+		IContext ctx,
+		MutableRootSector root,
+		List<object> transforms,
+		IWindow window
+	)
+	{
+		// Given a focused window on the active workspace and monitor, with the workspace engine
+		// creators set up so that a new workspace can actually be created
+		root.WorkspaceSector.HasInitialized = true;
+		root.WorkspaceSector.CreateLayoutEngines = () =>
+			new CreateLeafLayoutEngine[] { (id) => Substitute.For<ILayoutEngine>() };
+
+		IMonitor monitor = CreateMonitor((HMONITOR)1);
+		window.Handle.Returns((HWND)123);
+		Workspace workspace = CreateWorkspace() with { LastFocusedWindowHandle = window.Handle };
+		PopulateMonitorWorkspaceMap(root, monitor, workspace);
+		root.MonitorSector.ActiveMonitorHandle = monitor.Handle;
+		AddActiveWorkspaceToStore(root, workspace);
+		PopulateWindowWorkspaceMap(root, window, workspace);
+
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		ICommand command = testUtils.GetCommand("whim.core.move_window_to_new_workspace_on_current_monitor");
+
+		// When
+		command.TryExecute();
+
+		// Then a new workspace is created on the current monitor and the focused window is moved to it
+		Assert.Contains(transforms, t => t.Equals(new CreateWorkspaceOnMonitorTransform()));
+		Assert.Contains(
+			transforms,
+			t => t is MoveWindowToWorkspaceTransform move && move.WindowHandle == window.Handle
+		);
+	}
+
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void MoveWindowToNewWorkspaceOnCurrentMonitor_NoFocusedWindow(
+		IContext ctx,
+		MutableRootSector root,
+		List<object> transforms
+	)
+	{
+		// Given there is an active workspace and monitor but no focused window
+		Workspace workspace = CreateWorkspace();
+		AddActiveWorkspaceToStore(root, workspace);
+
+		CoreCommands commands = new(ctx);
+		PluginCommandsTestUtils testUtils = new(commands);
+
+		ICommand command = testUtils.GetCommand("whim.core.move_window_to_new_workspace_on_current_monitor");
+
+		// When
+		command.TryExecute();
+
+		// Then no workspace is created, because there is no window to move
+		Assert.DoesNotContain(transforms, t => t is CreateWorkspaceOnMonitorTransform);
+	}
+
+	[Theory, AutoSubstituteData<StoreCustomization>]
 	internal void PinWorkspaceToCurrentMonitor(IContext ctx, MutableRootSector root, List<object> transforms)
 	{
 		// Given there is an active workspace on the second monitor
