@@ -40,7 +40,14 @@ To treat key modifiers like `LWin` and `RWin` the same, set `unify_key_modifiers
 
 ## Suppress Bare Win Key
 
-To prevent Windows from opening the Start menu when the Windows key is pressed and released without another key, set `suppress_bare_win_key` to `true`.
+To prevent Windows from opening the Start menu when the Windows key is pressed and released without another key, set `suppress_bare_win_key` to `true`. This preserves the original behavior of sending an unassigned `0xE8` key tap when the Windows key is pressed. Set it to `false` to disable suppression.
+
+Named modes provide other suppression strategies:
+
+- `down-control` and `up-control` send a Control key tap when the Windows key is pressed or released.
+- `down-e8` and `up-e8` send an unassigned `0xE8` key tap when the Windows key is pressed or released.
+- `eat-bound` hides the Windows key from Windows when it is used in a Whim keybind. Native unbound shortcuts and bare Windows key taps still pass through.
+- `eat-bound-and-bare-tap` also hides bare Windows key taps, while native unbound shortcuts still pass through.
 
 ## Center Cursor on Monitor Switch
 

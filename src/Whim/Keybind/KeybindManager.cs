@@ -24,7 +24,7 @@ internal class KeybindManager(IContext context) : IKeybindManager
 		}
 	}
 
-	public bool SuppressBareWinKey { get; set; }
+	public WinKeySuppressionMode SuppressBareWinKey { get; set; }
 
 	public bool CenterCursorOnMonitorSwitch { get; set; }
 

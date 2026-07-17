@@ -20,10 +20,10 @@ public interface IKeybindManager
 	bool UnifyKeyModifiers { get; set; }
 
 	/// <summary>
-	/// Whether to send a dummy key tap when the Windows key is pressed, preventing Windows from
-	/// treating the Windows key release as a Start menu shortcut.
+	/// How to prevent Windows from treating the Windows key release as a Start menu shortcut.
+	/// Defaults to <see cref="WinKeySuppressionMode.None"/>.
 	/// </summary>
-	bool SuppressBareWinKey { get; set; }
+	WinKeySuppressionMode SuppressBareWinKey { get; set; }
 
 	/// <summary>
 	/// Whether focusing a different monitor via a keybind (for example the

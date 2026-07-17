@@ -353,10 +353,7 @@ public class KeybindHookTests
 	}
 
 	[Theory, AutoSubstituteData<KeybindHookCustomization>]
-	internal void LowLevelKeyboardProc_EatBound_ReplaysWinDownForUnboundKey(
-		IContext ctx,
-		IInternalContext internalCtx
-	)
+	internal void LowLevelKeyboardProc_EatBound_ReplaysWinDownForUnboundKey(IContext ctx, IInternalContext internalCtx)
 	{
 		// Given
 		CaptureKeybindHook capture = CaptureKeybindHook.Create(internalCtx);

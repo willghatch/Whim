@@ -175,7 +175,27 @@ public static class YamlLoader
 
 		if (keybinds.SuppressBareWinKey?.TryGetBoolean(out bool suppressBareWinKey) == true)
 		{
-			ctx.KeybindManager.SuppressBareWinKey = suppressBareWinKey;
+			ctx.KeybindManager.SuppressBareWinKey = suppressBareWinKey
+				? WinKeySuppressionMode.DownE8
+				: WinKeySuppressionMode.None;
+		}
+		else if (keybinds.SuppressBareWinKey?.TryGetString(out string? suppressionMode) == true)
+		{
+			WinKeySuppressionMode? parsedMode = suppressionMode switch
+			{
+				"down-control" => WinKeySuppressionMode.DownControl,
+				"up-control" => WinKeySuppressionMode.UpControl,
+				"down-e8" => WinKeySuppressionMode.DownE8,
+				"up-e8" => WinKeySuppressionMode.UpE8,
+				"eat-bound" => WinKeySuppressionMode.EatBound,
+				"eat-bound-and-bare-tap" => WinKeySuppressionMode.EatBoundAndBareTap,
+				_ => null,
+			};
+
+			if (parsedMode is { } mode)
+			{
+				ctx.KeybindManager.SuppressBareWinKey = mode;
+			}
 		}
 
 		if (keybinds.CenterCursorOnMonitorSwitch?.TryGetBoolean(out bool centerCursorOnMonitorSwitch) == true)

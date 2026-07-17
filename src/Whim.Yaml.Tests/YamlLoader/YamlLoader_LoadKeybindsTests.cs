@@ -390,12 +390,7 @@ public class YamlLoader_LoadKeybindsTests
 		};
 
 	[Theory, MemberAutoSubstituteData<YamlLoaderCustomization>(nameof(SuppressBareWinKeyConfig))]
-	public void Load_SuppressBareWinKey(
-		string config,
-		bool isYaml,
-		WinKeySuppressionMode expected,
-		IContext ctx
-	)
+	public void Load_SuppressBareWinKey(string config, bool isYaml, WinKeySuppressionMode expected, IContext ctx)
 	{
 		// Given a valid config with suppressBareWinKey set
 		YamlLoaderTestUtils.SetupFileConfig(ctx, config, isYaml);
