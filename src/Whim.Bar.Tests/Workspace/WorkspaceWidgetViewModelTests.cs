@@ -143,6 +143,102 @@ public class WorkspaceWidgetViewModelTests
 	}
 
 	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void MonitorWorkspaceChanged_StickyWorkspaceMovedAway_RemovedFromBar(
+		IContext ctx,
+		MutableRootSector root
+	)
+	{
+		// Given a workspace pinned (sticky) to monitor1, shown on monitor1's bar alongside a
+		// non-sticky workspace.
+		IMonitor monitor1 = StoreTestUtils.CreateMonitor((HMONITOR)100);
+		IMonitor monitor2 = StoreTestUtils.CreateMonitor((HMONITOR)200);
+		Workspace workspace1 = StoreTestUtils.CreateWorkspace();
+		Workspace workspace2 = StoreTestUtils.CreateWorkspace();
+
+		StoreTestUtils.AddWorkspacesToStore(root, workspace1, workspace2);
+		StoreTestUtils.PopulateMonitorWorkspaceMap(root, monitor1, workspace1);
+		StoreTestUtils.PopulateMonitorWorkspaceMap(root, monitor2, workspace2);
+		root.MapSector.StickyWorkspaceMonitorIndexMap = root.MapSector.StickyWorkspaceMonitorIndexMap.SetItem(
+			workspace1.Id,
+			[0]
+		);
+
+		WorkspaceWidgetViewModel sut = new(ctx, monitor1);
+		Assert.Equal(2, sut.Workspaces.Count);
+
+		// When workspace1 is moved to monitor2: its pin follows to monitor2, monitor1 switches to
+		// workspace2, and monitor2 shows workspace1.
+		root.MapSector.StickyWorkspaceMonitorIndexMap = root.MapSector.StickyWorkspaceMonitorIndexMap.SetItem(
+			workspace1.Id,
+			[1]
+		);
+		root.MapSector.MonitorWorkspaceMap = root
+			.MapSector.MonitorWorkspaceMap.SetItem(monitor1.Handle, workspace2.Id)
+			.SetItem(monitor2.Handle, workspace1.Id);
+		root.MapSector.QueueEvent(
+			new MonitorWorkspaceChangedEventArgs()
+			{
+				Monitor = monitor1,
+				PreviousWorkspace = workspace1,
+				CurrentWorkspace = workspace2,
+			}
+		);
+		root.DispatchEvents();
+
+		// Then the moved workspace no longer appears on monitor1's bar.
+		Assert.Single(sut.Workspaces);
+		Assert.Same(workspace2, sut.Workspaces[0].Workspace);
+		Assert.True(sut.Workspaces[0].ActiveOnMonitor);
+	}
+
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void MonitorWorkspaceChanged_StickyWorkspaceMovedTo_AddedToBar(IContext ctx, MutableRootSector root)
+	{
+		// Given a workspace pinned (sticky) to monitor1, absent from monitor2's bar.
+		IMonitor monitor1 = StoreTestUtils.CreateMonitor((HMONITOR)100);
+		IMonitor monitor2 = StoreTestUtils.CreateMonitor((HMONITOR)200);
+		Workspace workspace1 = StoreTestUtils.CreateWorkspace();
+		Workspace workspace2 = StoreTestUtils.CreateWorkspace();
+
+		StoreTestUtils.AddWorkspacesToStore(root, workspace1, workspace2);
+		StoreTestUtils.PopulateMonitorWorkspaceMap(root, monitor1, workspace1);
+		StoreTestUtils.PopulateMonitorWorkspaceMap(root, monitor2, workspace2);
+		root.MapSector.StickyWorkspaceMonitorIndexMap = root.MapSector.StickyWorkspaceMonitorIndexMap.SetItem(
+			workspace1.Id,
+			[0]
+		);
+
+		WorkspaceWidgetViewModel sut = new(ctx, monitor2);
+		Assert.Single(sut.Workspaces);
+		Assert.Same(workspace2, sut.Workspaces[0].Workspace);
+
+		// When workspace1 is moved to monitor2.
+		root.MapSector.StickyWorkspaceMonitorIndexMap = root.MapSector.StickyWorkspaceMonitorIndexMap.SetItem(
+			workspace1.Id,
+			[1]
+		);
+		root.MapSector.MonitorWorkspaceMap = root
+			.MapSector.MonitorWorkspaceMap.SetItem(monitor1.Handle, workspace2.Id)
+			.SetItem(monitor2.Handle, workspace1.Id);
+		root.MapSector.QueueEvent(
+			new MonitorWorkspaceChangedEventArgs()
+			{
+				Monitor = monitor2,
+				PreviousWorkspace = workspace2,
+				CurrentWorkspace = workspace1,
+			}
+		);
+		root.DispatchEvents();
+
+		// Then the moved workspace now appears on monitor2's bar and is active there.
+		Assert.Equal(2, sut.Workspaces.Count);
+		Assert.Same(workspace1, sut.Workspaces[0].Workspace);
+		Assert.Same(workspace2, sut.Workspaces[1].Workspace);
+		Assert.True(sut.Workspaces[0].ActiveOnMonitor);
+		Assert.False(sut.Workspaces[1].ActiveOnMonitor);
+	}
+
+	[Theory, AutoSubstituteData<StoreCustomization>]
 	internal void WorkspaceRenamed_WrongMonitor(IContext ctx, MutableRootSector root)
 	{
 		// Given
