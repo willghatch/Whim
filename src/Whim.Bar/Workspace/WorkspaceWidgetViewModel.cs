@@ -41,12 +41,23 @@ internal class WorkspaceWidgetViewModel : IDisposable
 		UpdateWorkspacesCollection();
 	}
 
-	private void UpdateWorkspacesCollection()
+	/// <summary>
+	/// Rebuilds <see cref="Workspaces"/> from the workspaces which can be shown on this monitor, but
+	/// only if that set has actually changed. Returns <see langword="true"/> if the collection was
+	/// rebuilt, otherwise <see langword="false"/> so callers can update lighter-weight state (such as
+	/// the active flag) without discarding the existing models.
+	/// </summary>
+	private bool UpdateWorkspacesCollection()
 	{
-		Workspaces.Clear();
-
 		IReadOnlyList<IWorkspace> workspaces =
 			_context.Store.Pick(Pickers.PickStickyWorkspacesByMonitor(Monitor.Handle)).ValueOrDefault ?? [];
+
+		if (workspaces.Select(w => w.Id).SequenceEqual(Workspaces.Select(m => m.Workspace.Id)))
+		{
+			return false;
+		}
+
+		Workspaces.Clear();
 
 		foreach (IWorkspace workspace in workspaces)
 		{
@@ -58,6 +69,8 @@ internal class WorkspaceWidgetViewModel : IDisposable
 				new WorkspaceModel(_context, this, workspace, Monitor.Handle == monitorForWorkspace?.Handle)
 			);
 		}
+
+		return true;
 	}
 
 	private void WorkspaceEvents_WorkspaceAdded(object? sender, WorkspaceEventArgs args) =>
@@ -72,6 +85,14 @@ internal class WorkspaceWidgetViewModel : IDisposable
 	private void MapEvents_MonitorWorkspaceChanged(object? sender, MonitorWorkspaceChangedEventArgs args)
 	{
 		if (args.Monitor.Handle != Monitor.Handle)
+		{
+			return;
+		}
+
+		// Moving a sticky workspace on or off this monitor changes which workspaces belong on the bar,
+		// so refresh membership first. If it was unchanged, this is an ordinary workspace switch and we
+		// only need to move the active marker.
+		if (UpdateWorkspacesCollection())
 		{
 			return;
 		}
