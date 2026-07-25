@@ -138,36 +138,21 @@ internal record MonitorsChangedTransform : Transform
 			mapSector.MonitorWorkspaceMap = mapSector.MonitorWorkspaceMap.Remove(monitor.Handle);
 		}
 
-		// If a monitor was added, set it to an inactive workspace.
+		// Give each added monitor its own new workspace, pinned (sticky) to that monitor.
 		foreach (IMonitor monitor in addedMonitors)
 		{
-			// Try find a workspace which doesn't have a monitor.
-			WorkspaceId workspaceId = default;
-			foreach (WorkspaceId currId in workspaceSector.WorkspaceOrder)
+			int monitorIndex = monitorSector.Monitors.IndexOf(monitor);
+			if (monitorIndex < 0)
 			{
-				if (!ctx.Store.Pick(PickMonitorByWorkspace(currId)).IsSuccessful)
-				{
-					workspaceId = currId;
-					mapSector.MonitorWorkspaceMap = mapSector.MonitorWorkspaceMap.SetItem(monitor.Handle, currId);
-					break;
-				}
+				continue;
 			}
 
-			// If there's no workspace, create one.
-			if (workspaceId == default)
+			Result<WorkspaceId> addWorkspaceResult = ctx.Store.Dispatch(
+				new AddWorkspaceTransform(MonitorIndices: [monitorIndex])
+			);
+			if (addWorkspaceResult.TryGet(out WorkspaceId newWorkspaceId))
 			{
-				Result<WorkspaceId> addWorkspaceResult = ctx.Store.Dispatch(new AddWorkspaceTransform());
-				if (addWorkspaceResult.TryGet(out WorkspaceId newWorkspaceId))
-				{
-					mapSector.MonitorWorkspaceMap = mapSector.MonitorWorkspaceMap.SetItem(
-						monitor.Handle,
-						newWorkspaceId
-					);
-				}
-				else
-				{
-					continue;
-				}
+				mapSector.MonitorWorkspaceMap = mapSector.MonitorWorkspaceMap.SetItem(monitor.Handle, newWorkspaceId);
 			}
 		}
 
