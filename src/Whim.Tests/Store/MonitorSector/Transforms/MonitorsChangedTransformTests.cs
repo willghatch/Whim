@@ -391,4 +391,202 @@ public class MonitorsChangedTransformTests
 
 		AssertPrimaryMonitor(rootSector, LeftTopMonitorSetup.Handle);
 	}
+
+	// The device name a non-primary monitor is remembered by is its szDevice, which
+	// MonitorTestUtils.SetupMultipleMonitors sets to "DISPLAY {handle}".
+	private static string RightMonitorName => $"DISPLAY {(int)RightMonitorSetup.Handle}";
+
+	/// <summary>
+	/// Sets up two monitors (LeftTop primary, Right non-primary), each with its own pinned workspace,
+	/// by dispatching an initial monitors-changed. Returns the deterministic workspaces made available.
+	/// After this: LeftTop shows workspaces[0] (pinned to index 0), Right shows workspaces[1] (pinned
+	/// to index 1).
+	/// </summary>
+	private static IWorkspace[] Setup_TwoMonitorsEachWithWorkspace(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector,
+		int workspaceCount = 3
+	)
+	{
+		Setup_TryEnqueue(internalCtx);
+		IWorkspace[] workspaces = SetupAddWorkspaces(ctx, rootSector, count: workspaceCount);
+
+		SetupMultipleMonitors(internalCtx, [LeftTopMonitorSetup, RightMonitorSetup]);
+		ctx.Store.Dispatch(new MonitorsChangedTransform());
+
+		return workspaces;
+	}
+
+	/// <summary>
+	/// When a monitor is unplugged, the workspace it was showing is remembered; when it is reconnected,
+	/// that workspace is moved back onto it and pinned to it, without creating a new workspace.
+	/// </summary>
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void ReconnectedMonitor_RestoresRememberedWorkspace(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector
+	)
+	{
+		// Given two monitors, each with a pinned workspace
+		IWorkspace[] workspaces = Setup_TwoMonitorsEachWithWorkspace(ctx, internalCtx, rootSector);
+
+		// When the Right monitor is unplugged
+		Setup_TryEnqueue(internalCtx);
+		SetupMultipleMonitors(internalCtx, [LeftTopMonitorSetup]);
+		ctx.Store.Dispatch(new MonitorsChangedTransform());
+
+		// Then its workspace is remembered, and is no longer shown on a monitor
+		Assert.True(rootSector.MonitorSector.UnpluggedMonitorWorkspaces.ContainsKey(RightMonitorName));
+		Assert.Equal(workspaces[1].Id, rootSector.MonitorSector.UnpluggedMonitorWorkspaces[RightMonitorName][0]);
+		Assert.False(rootSector.MapSector.MonitorWorkspaceMap.ContainsKey(RightMonitorSetup.Handle));
+
+		// When the Right monitor is reconnected
+		Setup_TryEnqueue(internalCtx);
+		SetupMultipleMonitors(internalCtx, [LeftTopMonitorSetup, RightMonitorSetup]);
+		ctx.Store.Dispatch(new MonitorsChangedTransform());
+
+		// Then the remembered workspace is moved back onto it, pinned to it, and no new workspace was made
+		Assert.Equal(workspaces[1].Id, rootSector.MapSector.MonitorWorkspaceMap[RightMonitorSetup.Handle]);
+		Assert.Equal(workspaces[0].Id, rootSector.MapSector.MonitorWorkspaceMap[LeftTopMonitorSetup.Handle]);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[1].Id].Should().BeEquivalentTo([1]);
+		Assert.Equal(2, rootSector.WorkspaceSector.Workspaces.Count);
+
+		// And the memory has been consumed
+		Assert.False(rootSector.MonitorSector.UnpluggedMonitorWorkspaces.ContainsKey(RightMonitorName));
+	}
+
+	/// <summary>
+	/// Every workspace pinned to an unplugged monitor is remembered and re-pinned to it on reconnect,
+	/// and the workspace that was showing is the one shown again.
+	/// </summary>
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void ReconnectedMonitor_RestoresAllPinnedWorkspaces(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector
+	)
+	{
+		// Given two monitors each with a pinned workspace, plus a second workspace pinned to Right
+		// (index 1) which is not currently shown
+		IWorkspace[] workspaces = Setup_TwoMonitorsEachWithWorkspace(ctx, internalCtx, rootSector);
+
+		Workspace extra = CreateWorkspace();
+		AddWorkspaceToStore(rootSector, extra);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap =
+			rootSector.MapSector.StickyWorkspaceMonitorIndexMap.SetItem(extra.Id, [1]);
+
+		// When the Right monitor is unplugged
+		Setup_TryEnqueue(internalCtx);
+		SetupMultipleMonitors(internalCtx, [LeftTopMonitorSetup]);
+		ctx.Store.Dispatch(new MonitorsChangedTransform());
+
+		// Then both of Right's workspaces are remembered, with the previously shown one first
+		ImmutableArray<WorkspaceId> remembered = rootSector.MonitorSector.UnpluggedMonitorWorkspaces[RightMonitorName];
+		Assert.Equal(workspaces[1].Id, remembered[0]);
+		remembered.Should().BeEquivalentTo([workspaces[1].Id, extra.Id]);
+
+		// When the Right monitor is reconnected
+		Setup_TryEnqueue(internalCtx);
+		SetupMultipleMonitors(internalCtx, [LeftTopMonitorSetup, RightMonitorSetup]);
+		ctx.Store.Dispatch(new MonitorsChangedTransform());
+
+		// Then both are re-pinned to Right, and the previously shown one is shown again
+		Assert.Equal(workspaces[1].Id, rootSector.MapSector.MonitorWorkspaceMap[RightMonitorSetup.Handle]);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[1].Id].Should().BeEquivalentTo([1]);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[extra.Id].Should().BeEquivalentTo([1]);
+	}
+
+	/// <summary>
+	/// If a remembered workspace was deleted while the monitor was unplugged, reconnecting the monitor
+	/// gracefully falls back to creating a new workspace.
+	/// </summary>
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void ReconnectedMonitor_WithDeletedRememberedWorkspace_CreatesNewWorkspace(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector
+	)
+	{
+		// Given two monitors each with a pinned workspace
+		IWorkspace[] workspaces = Setup_TwoMonitorsEachWithWorkspace(ctx, internalCtx, rootSector);
+
+		// When the Right monitor is unplugged
+		Setup_TryEnqueue(internalCtx);
+		SetupMultipleMonitors(internalCtx, [LeftTopMonitorSetup]);
+		ctx.Store.Dispatch(new MonitorsChangedTransform());
+
+		// And Right's remembered workspace is deleted
+		rootSector.WorkspaceSector.Workspaces = rootSector.WorkspaceSector.Workspaces.Remove(workspaces[1].Id);
+		rootSector.WorkspaceSector.WorkspaceOrder = rootSector.WorkspaceSector.WorkspaceOrder.Remove(workspaces[1].Id);
+
+		// When the Right monitor is reconnected
+		Setup_TryEnqueue(internalCtx);
+		SetupMultipleMonitors(internalCtx, [LeftTopMonitorSetup, RightMonitorSetup]);
+		ctx.Store.Dispatch(new MonitorsChangedTransform());
+
+		// Then a new workspace is created for Right, and the memory is consumed
+		Assert.Equal(workspaces[2].Id, rootSector.MapSector.MonitorWorkspaceMap[RightMonitorSetup.Handle]);
+		Assert.False(rootSector.MonitorSector.UnpluggedMonitorWorkspaces.ContainsKey(RightMonitorName));
+	}
+
+	/// <summary>
+	/// A remembered workspace which the user moved onto a different monitor while the monitor was
+	/// unplugged is left where it is; the reconnected monitor gets a new workspace instead.
+	/// </summary>
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void ReconnectedMonitor_WhenRememberedWorkspaceShownElsewhere_CreatesNewWorkspace(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector
+	)
+	{
+		// Given two monitors each with a pinned workspace
+		IWorkspace[] workspaces = Setup_TwoMonitorsEachWithWorkspace(ctx, internalCtx, rootSector);
+
+		// When the Right monitor is unplugged
+		Setup_TryEnqueue(internalCtx);
+		SetupMultipleMonitors(internalCtx, [LeftTopMonitorSetup]);
+		ctx.Store.Dispatch(new MonitorsChangedTransform());
+
+		// And Right's remembered workspace is now shown on the LeftTop monitor instead
+		rootSector.MapSector.MonitorWorkspaceMap = rootSector.MapSector.MonitorWorkspaceMap.SetItem(
+			LeftTopMonitorSetup.Handle,
+			workspaces[1].Id
+		);
+
+		// When the Right monitor is reconnected
+		Setup_TryEnqueue(internalCtx);
+		SetupMultipleMonitors(internalCtx, [LeftTopMonitorSetup, RightMonitorSetup]);
+		ctx.Store.Dispatch(new MonitorsChangedTransform());
+
+		// Then the remembered workspace stays on LeftTop, and Right gets a new workspace
+		Assert.Equal(workspaces[1].Id, rootSector.MapSector.MonitorWorkspaceMap[LeftTopMonitorSetup.Handle]);
+		Assert.Equal(workspaces[2].Id, rootSector.MapSector.MonitorWorkspaceMap[RightMonitorSetup.Handle]);
+		Assert.False(rootSector.MonitorSector.UnpluggedMonitorWorkspaces.ContainsKey(RightMonitorName));
+	}
+
+	/// <summary>
+	/// The primary monitor is not remembered on removal: its name is masked to "DISPLAY", which is not
+	/// a stable identity for a physical monitor, so it must not be used as a restore key.
+	/// </summary>
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void PrimaryMonitorRemoval_IsNotRemembered(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector
+	)
+	{
+		// Given two monitors, LeftTop being primary
+		IWorkspace[] _ = Setup_TwoMonitorsEachWithWorkspace(ctx, internalCtx, rootSector);
+
+		// When the primary (LeftTop) monitor is removed, forcing Right to become primary
+		Setup_TryEnqueue(internalCtx);
+		SetupMultipleMonitors(internalCtx, [RightMonitorSetup], RightMonitorSetup.Handle);
+		ctx.Store.Dispatch(new MonitorsChangedTransform());
+
+		// Then the removed primary's masked "DISPLAY" name is not remembered
+		Assert.False(rootSector.MonitorSector.UnpluggedMonitorWorkspaces.ContainsKey("DISPLAY"));
+	}
 }
