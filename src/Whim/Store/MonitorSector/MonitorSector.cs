@@ -13,6 +13,19 @@ internal class MonitorSector(IContext ctx, IInternalContext internalCtx)
 	public int MonitorsChangingTasks { get; set; }
 	public int MonitorsChangedDelay { get; set; } = 3 * 1000;
 	public ImmutableArray<IMonitor> Monitors { get; set; } = [];
+
+	/// <summary>
+	/// Remembers, for each monitor which has been unplugged (keyed by <see cref="IMonitor.Name"/>),
+	/// the workspaces which were pinned to it when it was unplugged - the workspace which was being
+	/// shown first. When a matching monitor is reconnected while Whim is running, these workspaces are
+	/// moved back onto it. This is intentionally kept only in memory and is not persisted across Whim
+	/// restarts, matching how Whim does not persist workspace layouts either.
+	///
+	/// Only non-primary monitors are recorded: the primary monitor's name is masked to "DISPLAY",
+	/// which is not a stable identity for a physical monitor.
+	/// </summary>
+	public ImmutableDictionary<string, ImmutableArray<WorkspaceId>> UnpluggedMonitorWorkspaces { get; set; } =
+		ImmutableDictionary<string, ImmutableArray<WorkspaceId>>.Empty;
 	public HMONITOR ActiveMonitorHandle { get; set; }
 	public HMONITOR PrimaryMonitorHandle { get; set; }
 	public HMONITOR LastWhimActiveMonitorHandle { get; set; }
