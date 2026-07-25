@@ -243,7 +243,7 @@ public class InitializeWorkspacesTransformTests
 		Assert.Empty(stickyWorkspace.WindowPositions);
 
 		Assert.Single(stickyWorkspace.LayoutEngines);
-		Assert.Single(rootSector.MapSector.StickyWorkspaceMonitorIndexMap);
+		Assert.Equal(2, rootSector.MapSector.StickyWorkspaceMonitorIndexMap.Count);
 		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[stickyWorkspace.Id].Should().BeEquivalentTo([0, 1]);
 
 		// - the automatically created workspace has the "Spotify" and "Discord" windows
@@ -255,6 +255,9 @@ public class InitializeWorkspacesTransformTests
 		Assert.Contains(DiscordHandle, autoWorkspace.WindowPositions);
 
 		Assert.Single(autoWorkspace.LayoutEngines);
+
+		// - the automatically created workspace is pinned to its monitor (the leftover AutoMonitor, index 2)
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[autoWorkspace.Id].Should().BeEquivalentTo([2]);
 
 		// - the WorkspaceSector has initialized
 		Assert.True(rootSector.WorkspaceSector.HasInitialized);
@@ -270,6 +273,43 @@ public class InitializeWorkspacesTransformTests
 		rootSector
 			.WindowSector.StartupWindows.Should()
 			.BeEquivalentTo([BrowserHandle, DiscordHandle, SpotifyHandle, BrokenHandle, VscodeHandle]);
+	}
+
+	/// <summary>
+	/// With no configured or saved workspaces, each monitor gets its own workspace pinned to that
+	/// monitor's index.
+	/// </summary>
+	[Theory, AutoSubstituteData<StoreCustomization>]
+	internal void NoConfiguredWorkspaces_EachMonitorGetsPinnedWorkspace(
+		IContext ctx,
+		IInternalContext internalCtx,
+		MutableRootSector rootSector
+	)
+	{
+		// Given there are no configured or saved workspaces, and two monitors
+		AddMonitorsToSector(rootSector, CreateMonitor(BrowserMonitor), CreateMonitor(CodeMonitor));
+		rootSector.WorkspaceSector.CreateLayoutEngines = () => [(id) => new ImmutableTestLayoutEngine()];
+
+		internalCtx.CoreNativeManager.GetAllWindows().Returns(_ => new List<HWND>());
+
+		InitializeWorkspacesTransform sut = new();
+
+		// When the transform is dispatched
+		var result = AssertDoesNotRaise(ctx, rootSector, sut);
+
+		// Then each monitor has its own distinct workspace, pinned to that monitor's index
+		Assert.True(result.IsSuccessful);
+
+		Assert.Equal(2, rootSector.WorkspaceSector.Workspaces.Count);
+		Assert.Equal(2, rootSector.MapSector.MonitorWorkspaceMap.Count);
+
+		WorkspaceId browserWorkspaceId = rootSector.MapSector.MonitorWorkspaceMap[BrowserMonitor];
+		WorkspaceId codeWorkspaceId = rootSector.MapSector.MonitorWorkspaceMap[CodeMonitor];
+		Assert.NotEqual(browserWorkspaceId, codeWorkspaceId);
+
+		Assert.Equal(2, rootSector.MapSector.StickyWorkspaceMonitorIndexMap.Count);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[browserWorkspaceId].Should().BeEquivalentTo([0]);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[codeWorkspaceId].Should().BeEquivalentTo([1]);
 	}
 
 	/// <summary>
