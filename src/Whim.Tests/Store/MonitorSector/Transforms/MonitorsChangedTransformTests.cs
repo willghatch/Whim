@@ -1,4 +1,5 @@
 using System.Linq;
+using FluentAssertions;
 using static Whim.TestUtils.MonitorTestUtils;
 
 namespace Whim.Tests;
@@ -60,61 +61,38 @@ public class MonitorsChangedTransformTests
 		internalCtx.CoreNativeManager.IsStaThread().Returns(_ => true, _ => false);
 
 	/// <summary>
-	/// Populate the sector with workspaces.
-	/// </summary>
-	/// <param name="ctx"></param>
-	/// <param name="rootSector"></param>
-	/// <returns></returns>
-	private static IWorkspace[] PopulateWorkspaces(IContext ctx, MutableRootSector rootSector)
-	{
-		Workspace workspace1 = CreateWorkspace();
-		Workspace workspace2 = CreateWorkspace();
-		Workspace workspace3 = CreateWorkspace();
-		AddWorkspacesToStore(rootSector, workspace1, workspace2, workspace3);
-		rootSector.WorkspaceSector.HasInitialized = true;
-		return [workspace1, workspace2, workspace3];
-	}
-
-	/// <summary>
 	/// Setup the adding of workspaces to the context.
+	///
+	/// Each added monitor now creates a new workspace pinned to it via
+	/// <see cref="AddWorkspaceTransform"/>. Interceptors make the workspaces created during a test
+	/// deterministic: the returned workspaces are added to the store in order as
+	/// <see cref="AddWorkspaceTransform"/> is dispatched.
 	/// </summary>
 	/// <param name="ctx"></param>
 	/// <param name="rootSector"></param>
+	/// <param name="count">The number of deterministic workspaces to make available.</param>
 	/// <returns></returns>
-	private static IWorkspace[] SetupAddWorkspaces(IContext ctx, MutableRootSector rootSector)
+	private static IWorkspace[] SetupAddWorkspaces(IContext ctx, MutableRootSector rootSector, int count = 3)
 	{
-		Workspace workspace1 = CreateWorkspace();
-		Workspace workspace2 = CreateWorkspace();
-		Workspace workspace3 = CreateWorkspace();
+		StoreWrapper store = (StoreWrapper)ctx.Store;
+		Workspace[] workspaces = new Workspace[count];
 
-		((StoreWrapper)ctx.Store)
-			.AddInterceptor(
+		for (int i = 0; i < count; i++)
+		{
+			Workspace workspace = CreateWorkspace();
+			workspaces[i] = workspace;
+			store.AddInterceptor(
 				t => t is AddWorkspaceTransform,
 				t =>
 				{
-					AddWorkspaceToStore(rootSector, workspace1);
-					return workspace1.Id;
-				}
-			)
-			.AddInterceptor(
-				t => t is AddWorkspaceTransform,
-				t =>
-				{
-					AddWorkspaceToStore(rootSector, workspace2);
-					return workspace2.Id;
-				}
-			)
-			.AddInterceptor(
-				t => t is AddWorkspaceTransform,
-				t =>
-				{
-					AddWorkspaceToStore(rootSector, workspace3);
-					return workspace3.Id;
+					AddWorkspaceToStore(rootSector, workspace);
+					return workspace.Id;
 				}
 			);
+		}
 
 		rootSector.WorkspaceSector.HasInitialized = true;
-		return [workspace1, workspace2, workspace3];
+		return [.. workspaces];
 	}
 
 	private static void AssertContainsTransform(IContext ctx, Guid workspaceId, int times = 1)
@@ -167,7 +145,7 @@ public class MonitorsChangedTransformTests
 	{
 		// Given we've populated monitors
 		Setup_TryEnqueue(internalCtx);
-		IWorkspace[] workspaces = PopulateWorkspaces(ctx, rootSector);
+		IWorkspace[] workspaces = SetupAddWorkspaces(ctx, rootSector);
 
 		SetupMultipleMonitors(internalCtx, [RightMonitorSetup, LeftTopMonitorSetup, LeftBottomMonitorSetup]);
 
@@ -207,7 +185,7 @@ public class MonitorsChangedTransformTests
 	{
 		// Given we've populated monitors
 		Setup_TryEnqueue(internalCtx);
-		IWorkspace[] workspaces = PopulateWorkspaces(ctx, rootSector);
+		IWorkspace[] workspaces = SetupAddWorkspaces(ctx, rootSector);
 
 		SetupMultipleMonitors(internalCtx, [RightMonitorSetup, LeftTopMonitorSetup]);
 		ctx.Store.Dispatch(new MonitorsChangedTransform());
@@ -229,9 +207,18 @@ public class MonitorsChangedTransformTests
 
 		Assert.Equal(3, rootSector.MapSector.MonitorWorkspaceMap.Count);
 
+		// The added monitor gets a brand-new workspace (created via the interceptor), and the existing
+		// monitors keep theirs.
 		Assert.Equal(workspaces[0].Id, rootSector.MapSector.MonitorWorkspaceMap[LeftTopMonitorSetup.Handle]);
 		Assert.Equal(workspaces[1].Id, rootSector.MapSector.MonitorWorkspaceMap[RightMonitorSetup.Handle]);
 		Assert.Equal(workspaces[2].Id, rootSector.MapSector.MonitorWorkspaceMap[LeftBottomMonitorSetup.Handle]);
+
+		// Each workspace is pinned (sticky) to its monitor's index. LeftTop is index 0, LeftBottom is
+		// index 1, and Right's pin was remapped to index 2 when LeftBottom was inserted before it.
+		Assert.Equal(3, rootSector.MapSector.StickyWorkspaceMonitorIndexMap.Count);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[0].Id].Should().BeEquivalentTo([0]);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[2].Id].Should().BeEquivalentTo([1]);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[1].Id].Should().BeEquivalentTo([2]);
 
 		AssertContainsTransform(ctx, workspaces[0].Id);
 		AssertContainsTransform(ctx, workspaces[1].Id);
@@ -243,9 +230,11 @@ public class MonitorsChangedTransformTests
 	[Theory, AutoSubstituteData<StoreCustomization>]
 	internal void MonitorsAdded_PrimaryChanged(IContext ctx, IInternalContext internalCtx, MutableRootSector rootSector)
 	{
-		// Given we've populated monitors
+		// Given we've populated monitors. Four deterministic workspaces are needed: one for each of
+		// the two initial monitors, plus one each for the two monitors added in the second change (the
+		// re-added LeftTop, now non-primary, and the new LeftBottom).
 		Setup_TryEnqueue(internalCtx);
-		IWorkspace[] workspaces = PopulateWorkspaces(ctx, rootSector);
+		IWorkspace[] workspaces = SetupAddWorkspaces(ctx, rootSector, count: 4);
 
 		SetupMultipleMonitors(internalCtx, [RightMonitorSetup, LeftTopMonitorSetup]);
 		ctx.Store.Dispatch(new MonitorsChangedTransform());
@@ -264,7 +253,7 @@ public class MonitorsChangedTransformTests
 		var raisedEvent = DispatchTransformEvent(
 			ctx,
 			rootSector,
-			[workspaces[0].Id, workspaces[1].Id, workspaces[2].Id]
+			[workspaces[1].Id, workspaces[2].Id, workspaces[3].Id]
 		);
 
 		Assert.Equal(2, raisedEvent.Arguments.AddedMonitors.Count());
@@ -273,9 +262,17 @@ public class MonitorsChangedTransformTests
 
 		Assert.Equal(3, rootSector.MapSector.MonitorWorkspaceMap.Count);
 
-		Assert.Equal(workspaces[0].Id, rootSector.MapSector.MonitorWorkspaceMap[LeftTopMonitorSetup.Handle]);
+		// Right is unchanged and keeps its original workspace. LeftTop was removed and re-added (its
+		// primary flag changed), and LeftBottom is new, so both get brand-new pinned workspaces.
+		Assert.Equal(workspaces[2].Id, rootSector.MapSector.MonitorWorkspaceMap[LeftTopMonitorSetup.Handle]);
 		Assert.Equal(workspaces[1].Id, rootSector.MapSector.MonitorWorkspaceMap[RightMonitorSetup.Handle]);
-		Assert.Equal(workspaces[2].Id, rootSector.MapSector.MonitorWorkspaceMap[LeftBottomMonitorSetup.Handle]);
+		Assert.Equal(workspaces[3].Id, rootSector.MapSector.MonitorWorkspaceMap[LeftBottomMonitorSetup.Handle]);
+
+		// Each shown workspace is pinned to its monitor's index: LeftTop 0, LeftBottom 1, and Right's
+		// pin was remapped to index 2 when LeftBottom was inserted before it.
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[2].Id].Should().BeEquivalentTo([0]);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[3].Id].Should().BeEquivalentTo([1]);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[1].Id].Should().BeEquivalentTo([2]);
 
 		AssertContainsTransform(ctx, workspaces[0].Id, 2);
 		AssertContainsTransform(ctx, workspaces[1].Id);
@@ -288,13 +285,14 @@ public class MonitorsChangedTransformTests
 	internal void MonitorsAdded_Initialization(IContext ctx, IInternalContext internalCtx, MutableRootSector rootSector)
 	{
 		// Given we have no monitors
-		IWorkspace[] workspaces = PopulateWorkspaces(ctx, rootSector);
+		IWorkspace[] workspaces = SetupAddWorkspaces(ctx, rootSector);
 
 		// When we add monitors
 		SetupMultipleMonitors(internalCtx, [RightMonitorSetup, LeftTopMonitorSetup]);
 		var raisedEvent = DispatchTransformEvent(ctx, rootSector, [workspaces[0].Id, workspaces[1].Id]);
 
 		// Then the resulting event will have a monitor added, and the other monitors in the sector will be set.
+		// Every monitor is added from an empty set, so each gets a new workspace pinned to its index.
 		Assert.Equal(2, raisedEvent.Arguments.AddedMonitors.Count());
 
 		Assert.Equal(LeftTopMonitorSetup.Handle, ctx.Store.Pick(Pickers.PickLastWhimActiveMonitor()).Handle);
@@ -302,6 +300,10 @@ public class MonitorsChangedTransformTests
 
 		Assert.Equal(workspaces[0].Id, rootSector.MapSector.MonitorWorkspaceMap[LeftTopMonitorSetup.Handle]);
 		Assert.Equal(workspaces[1].Id, rootSector.MapSector.MonitorWorkspaceMap[RightMonitorSetup.Handle]);
+
+		Assert.Equal(2, rootSector.MapSector.StickyWorkspaceMonitorIndexMap.Count);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[0].Id].Should().BeEquivalentTo([0]);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[1].Id].Should().BeEquivalentTo([1]);
 
 		Assert.DoesNotContain(ctx.GetTransforms(), t => t is DeactivateWorkspaceTransform);
 
@@ -331,6 +333,10 @@ public class MonitorsChangedTransformTests
 		Assert.Equal(workspaces[0].Id, rootSector.MapSector.MonitorWorkspaceMap[LeftTopMonitorSetup.Handle]);
 		Assert.Equal(workspaces[1].Id, rootSector.MapSector.MonitorWorkspaceMap[RightMonitorSetup.Handle]);
 
+		Assert.Equal(2, rootSector.MapSector.StickyWorkspaceMonitorIndexMap.Count);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[0].Id].Should().BeEquivalentTo([0]);
+		rootSector.MapSector.StickyWorkspaceMonitorIndexMap[workspaces[1].Id].Should().BeEquivalentTo([1]);
+
 		Assert.DoesNotContain(ctx.GetTransforms(), t => t is DeactivateWorkspaceTransform);
 
 		AssertPrimaryMonitor(rootSector, LeftTopMonitorSetup.Handle);
@@ -341,7 +347,7 @@ public class MonitorsChangedTransformTests
 	{
 		// Given there are no changes in the monitors.
 		Setup_TryEnqueue(internalCtx);
-		IWorkspace[] workspaces = PopulateWorkspaces(ctx, rootSector);
+		IWorkspace[] workspaces = SetupAddWorkspaces(ctx, rootSector);
 
 		SetupMultipleMonitors(internalCtx, [RightMonitorSetup, LeftTopMonitorSetup, LeftBottomMonitorSetup]);
 
