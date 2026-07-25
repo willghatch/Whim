@@ -192,15 +192,26 @@ internal record InitializeWorkspacesTransform : Transform
 			}
 		}
 
-		// If there are any monitors left, create workspaces for them.
-		IEnumerable<HMONITOR> unprocessedMonitors = monitorSector
-			.Monitors.Select(m => m.Handle)
-			.Except(processedMonitors);
-
-		foreach (HMONITOR monitor in unprocessedMonitors)
+		// Create a workspace pinned to each monitor which does not yet have one, so that
+		// by default every monitor owns a workspace instead of sharing unpinned ones.
+		for (int monitorIndex = 0; monitorIndex < monitorSector.Monitors.Length; monitorIndex++)
 		{
-			ctx.Store.Dispatch(new AddWorkspaceTransform($"Workspace {workspaceSector.Workspaces.Count + 1}"));
-			ctx.Store.Dispatch(new ActivateWorkspaceTransform(workspaceSector.WorkspaceOrder[^1], monitor));
+			HMONITOR monitor = monitorSector.Monitors[monitorIndex].Handle;
+			if (processedMonitors.Contains(monitor))
+			{
+				continue;
+			}
+
+			Result<WorkspaceId> addResult = ctx.Store.Dispatch(
+				new AddWorkspaceTransform(
+					$"Workspace {workspaceSector.Workspaces.Count + 1}",
+					MonitorIndices: [monitorIndex]
+				)
+			);
+			if (addResult.TryGet(out WorkspaceId workspaceId))
+			{
+				ctx.Store.Dispatch(new ActivateWorkspaceTransform(workspaceId, monitor));
+			}
 		}
 	}
 
