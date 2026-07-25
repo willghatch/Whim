@@ -66,7 +66,10 @@ public class MonitorsChangedTransformTests
 	/// Each added monitor now creates a new workspace pinned to it via
 	/// <see cref="AddWorkspaceTransform"/>. Interceptors make the workspaces created during a test
 	/// deterministic: the returned workspaces are added to the store in order as
-	/// <see cref="AddWorkspaceTransform"/> is dispatched.
+	/// <see cref="AddWorkspaceTransform"/> is dispatched. Each interceptor also reproduces the real
+	/// transform's sticky-pin bookkeeping from the intercepted transform's <c>MonitorIndices</c>, so
+	/// that the pin a caller passes is observable via <see cref="IMapSector.StickyWorkspaceMonitorIndexMap"/>
+	/// (and is remapped by the real transform logic when monitors later change).
 	/// </summary>
 	/// <param name="ctx"></param>
 	/// <param name="rootSector"></param>
@@ -86,6 +89,16 @@ public class MonitorsChangedTransformTests
 				t =>
 				{
 					AddWorkspaceToStore(rootSector, workspace);
+
+					if (((AddWorkspaceTransform)t).MonitorIndices is { } monitorIndices)
+					{
+						rootSector.MapSector.StickyWorkspaceMonitorIndexMap =
+							rootSector.MapSector.StickyWorkspaceMonitorIndexMap.SetItem(
+								workspace.Id,
+								[.. monitorIndices]
+							);
+					}
+
 					return workspace.Id;
 				}
 			);
