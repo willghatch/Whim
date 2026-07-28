@@ -8,8 +8,9 @@ namespace Whim;
 /// <see langword="null"/> is returned by the transform if the workspace creation was deferred.
 /// </summary>
 /// <param name="Name">
-/// The name of the workspace. Defaults to <see langword="null"/>, which will generate the name
-/// <c>Workspace {n}</c>.
+/// The name of the workspace. Defaults to <see langword="null"/>, which generates a numeric name:
+/// the first non-negative integer (starting from <c>0</c>) whose string representation is not
+/// already used by an existing workspace.
 /// </param>
 /// <param name="CreateLeafLayoutEngines">
 /// The layout engines to add to the workspace. Defaults to <see langword="null"/>, which will
@@ -71,7 +72,7 @@ public record AddWorkspaceTransform(
 
 		Workspace workspace = new(id)
 		{
-			Name = Name ?? $"Workspace {sector.Workspaces.Count + 1}",
+			Name = Name ?? WorkspaceUtils.GenerateWorkspaceName(sector),
 			LayoutEngines = layoutEnginesBuilder.ToImmutable(),
 		};
 		sector.Workspaces = sector.Workspaces.Add(workspace.Id, workspace);

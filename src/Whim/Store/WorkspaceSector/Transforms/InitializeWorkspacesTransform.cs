@@ -204,7 +204,6 @@ internal record InitializeWorkspacesTransform : Transform
 
 			Result<WorkspaceId> addResult = ctx.Store.Dispatch(
 				new AddWorkspaceTransform(
-					$"Workspace {workspaceSector.Workspaces.Count + 1}",
 					MonitorIndices: [monitorIndex]
 				)
 			);

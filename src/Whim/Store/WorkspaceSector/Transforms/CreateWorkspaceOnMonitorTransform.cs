@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Whim;
 
 /// <summary>
@@ -42,7 +40,7 @@ public record CreateWorkspaceOnMonitorTransform(HMONITOR MonitorHandle = default
 			return Result.FromError<WorkspaceId>(StoreErrors.MonitorNotFound(monitorHandle));
 		}
 
-		string name = Name ?? GenerateNumericName(mutableRootSector.WorkspaceSector);
+		string name = Name ?? WorkspaceUtils.GenerateWorkspaceName(mutableRootSector.WorkspaceSector);
 
 		// Create the workspace, pinned (sticky) to the target monitor.
 		Result<WorkspaceId> addResult = ctx.Store.Dispatch(
@@ -61,22 +59,5 @@ public record CreateWorkspaceOnMonitorTransform(HMONITOR MonitorHandle = default
 		}
 
 		return workspaceId;
-	}
-
-	private static string GenerateNumericName(WorkspaceSector sector)
-	{
-		HashSet<string> existingNames = [];
-		foreach (Workspace workspace in sector.Workspaces.Values)
-		{
-			existingNames.Add(workspace.Name);
-		}
-
-		int candidate = 0;
-		while (existingNames.Contains(candidate.ToString()))
-		{
-			candidate++;
-		}
-
-		return candidate.ToString();
 	}
 }

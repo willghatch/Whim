@@ -9,6 +9,28 @@ public static class WorkspaceUtils
 		WorkspaceId == default ? ctx.Store.Pick(PickActiveWorkspaceId()) : WorkspaceId;
 
 	/// <summary>
+	/// Generates a default workspace name: the first non-negative integer (starting from
+	/// <c>0</c>) whose string representation is not already used by an existing workspace.
+	/// </summary>
+	/// <param name="sector"></param>
+	internal static string GenerateWorkspaceName(WorkspaceSector sector)
+	{
+		HashSet<string> existingNames = [];
+		foreach (Workspace workspace in sector.Workspaces.Values)
+		{
+			existingNames.Add(workspace.Name);
+		}
+
+		int candidate = 0;
+		while (existingNames.Contains(candidate.ToString()))
+		{
+			candidate++;
+		}
+
+		return candidate.ToString();
+	}
+
+	/// <summary>
 	/// Set the active layout engine in the workspace.
 	/// This also sets the <see cref="Workspace.ActiveLayoutEngineIndex"/>.
 	/// </summary>
