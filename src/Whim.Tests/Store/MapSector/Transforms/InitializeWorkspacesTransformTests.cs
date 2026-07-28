@@ -248,7 +248,7 @@ public class InitializeWorkspacesTransformTests
 
 		// - the automatically created workspace has the "Spotify" and "Discord" windows
 		Workspace autoWorkspace = rootSector.WorkspaceSector.Workspaces.Values.FirstOrDefault(w =>
-			w.Name == "Workspace 4"
+			w.Name == "0"
 		)!;
 		Assert.Equal(2, autoWorkspace.WindowPositions.Count);
 		Assert.Contains(SpotifyHandle, autoWorkspace.WindowPositions);

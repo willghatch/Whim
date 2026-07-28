@@ -250,7 +250,7 @@ public class AddWorkspaceTransformTests_Initialized
 			CreateLeafLayoutEngines: transformCreateLeafLayoutEngines,
 			MonitorIndices: [1, 2]
 		);
-		AssertExecuteTransform(ctx, sut, root, null, "Workspace 1", transformCreateLeafLayoutEngines.Count, [1, 2]);
+		AssertExecuteTransform(ctx, sut, root, null, "0", transformCreateLeafLayoutEngines.Count, [1, 2]);
 	}
 
 	[Theory, AutoSubstituteData<StoreCustomization>]
@@ -266,7 +266,7 @@ public class AddWorkspaceTransformTests_Initialized
 	{
 		Setup_WorkspaceSector(root);
 		AddWorkspaceTransform sut = new();
-		AssertExecuteTransform(ctx, sut, root, null, "Workspace 1", sectorCreateLeafLayoutEngines.Count, null);
+		AssertExecuteTransform(ctx, sut, root, null, "0", sectorCreateLeafLayoutEngines.Count, null);
 	}
 
 	[Theory, AutoSubstituteData<StoreCustomization>]
@@ -275,7 +275,7 @@ public class AddWorkspaceTransformTests_Initialized
 		Setup_WorkspaceSector(root);
 		Guid id = Guid.NewGuid();
 		AddWorkspaceTransform sut = new(WorkspaceId: id);
-		AssertExecuteTransform(ctx, sut, root, id, "Workspace 1", sectorCreateLeafLayoutEngines.Count, null);
+		AssertExecuteTransform(ctx, sut, root, id, "0", sectorCreateLeafLayoutEngines.Count, null);
 	}
 
 	[Theory, AutoSubstituteData<StoreCustomization>]
